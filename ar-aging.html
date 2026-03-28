@@ -416,8 +416,8 @@ window.B1Report = {
 
     const ageBucket = dueDateStr => {
       if (!dueDateStr) return { label: 'Current', key: 'current', days: 0 };
-      const due = new Date(dueDateStr);
-      due.setHours(0, 0, 0, 0);
+      const [y, m, d] = dueDateStr.split('-').map(Number);
+      const due = new Date(y, m - 1, d); // local midnight — avoids UTC parse shift
       const days = Math.floor((today - due) / 86400000);
       if (days <= 0)  return { label: 'Current',   key: 'current', days };
       if (days <= 30) return { label: '1–30 days', key: 'b30',     days };
@@ -437,7 +437,9 @@ window.B1Report = {
     const bucket60plus = enriched
       .filter(r => r._bucket.key === 'b90' || r._bucket.key === 'b90plus')
       .reduce((s, r) => s + r._outstanding, 0);
-    const largestOverdue = enriched.reduce((max, r) => Math.max(max, r._outstanding), 0);
+    const largestOverdue = enriched
+      .filter(r => r._bucket.days > 0)
+      .reduce((max, r) => Math.max(max, r._outstanding), 0);
 
     document.getElementById('kpi-1').textContent = fmtK(totalAR);
     document.getElementById('kpi-2').textContent = openInvoices.length;
