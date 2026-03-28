@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>B1 Report</title>
+<title>Inventory Levels · B1 Report</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
@@ -158,6 +158,22 @@ body {
   color: var(--muted);
 }
 
+/* ── Warning banner ──────────────────────────────────────────── */
+.warning-banner {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  background: rgba(217,119,6,0.07);
+  border: 1px solid rgba(217,119,6,0.2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--amber);
+}
+.warning-banner.visible { display: flex; }
+
 /* ── Two-column chart row ────────────────────────────────────── */
 .chart-row {
   display: grid;
@@ -266,7 +282,7 @@ tbody td.muted { color: var(--muted); }
 <!-- ── Header ── -->
 <div class="header">
   <div class="header-left">
-    <h1 id="rpt-title">Report title</h1>
+    <h1 id="rpt-title">Inventory Levels</h1>
     <div class="meta" id="rpt-meta">Waiting for data…</div>
   </div>
   <div class="header-right">
@@ -278,64 +294,71 @@ tbody td.muted { color: var(--muted); }
 <!-- ── KPI row ── -->
 <div class="kpi-row">
   <div class="kpi kpi-blue">
-    <div class="kpi-label">KPI one</div>
+    <div class="kpi-label">Total Items</div>
     <div class="kpi-value" id="kpi-1">—</div>
     <div class="kpi-delta" id="kpi-1-d"></div>
   </div>
   <div class="kpi kpi-green">
-    <div class="kpi-label">KPI two</div>
+    <div class="kpi-label">Total Stock Value</div>
     <div class="kpi-value" id="kpi-2">—</div>
     <div class="kpi-delta" id="kpi-2-d"></div>
   </div>
   <div class="kpi kpi-amber">
-    <div class="kpi-label">KPI three</div>
+    <div class="kpi-label">Below Reorder Point</div>
     <div class="kpi-value" id="kpi-3">—</div>
     <div class="kpi-delta" id="kpi-3-d"></div>
   </div>
   <div class="kpi kpi-red">
-    <div class="kpi-label">KPI four</div>
+    <div class="kpi-label">Out of Stock</div>
     <div class="kpi-value" id="kpi-4">—</div>
     <div class="kpi-delta" id="kpi-4-d"></div>
   </div>
+</div>
+
+<!-- ── Warning banner ── -->
+<div class="warning-banner" id="warning-below-min">
+  ⚠ Items below minimum inventory level — review reorder requirements
 </div>
 
 <!-- ── Charts ── -->
 <div class="chart-row">
   <div class="card">
     <div class="card-header">
-      <span class="card-title">Bar / line chart</span>
-      <span class="card-hint">ENTITY."Field" by period</span>
+      <span class="card-title">Top Items by Stock Value</span>
+      <span class="card-hint">OITM."OnHand × LastPurchasePrice" · top 15</span>
     </div>
-    <canvas id="chart-main" height="140"></canvas>
+    <canvas id="chart-value" height="220"></canvas>
   </div>
   <div class="card">
     <div class="card-header">
-      <span class="card-title">Breakdown</span>
-      <span class="card-hint">by category</span>
+      <span class="card-title">Stock Health</span>
+      <span class="card-hint">by item count</span>
     </div>
-    <canvas id="chart-donut" height="140"></canvas>
+    <canvas id="chart-health" height="220"></canvas>
   </div>
 </div>
 
-<!-- ── Table ── -->
+<!-- ── Items table ── -->
 <div class="card">
   <div class="card-header">
-    <span class="card-title">Detail table</span>
-    <span class="card-hint">ENTITY · key fields</span>
+    <span class="card-title">Inventory Detail</span>
+    <span class="card-hint">OITM · sorted by status (out → low → ok)</span>
   </div>
   <table>
     <thead>
       <tr>
-        <th>Name / description</th>
-        <th>Code</th>
-        <th>Date</th>
+        <th>Item</th>
+        <th class="r">On Hand</th>
+        <th class="r">Min Level</th>
+        <th class="r">Max Level</th>
+        <th class="r">Gap</th>
+        <th class="r">Stock Value</th>
         <th>Status</th>
-        <th class="r">Amount</th>
         <th class="r">Open in SAP</th>
       </tr>
     </thead>
     <tbody id="tbl-body">
-      <tr><td colspan="6" class="empty">Waiting for data…</td></tr>
+      <tr><td colspan="8" class="empty">Waiting for data…</td></tr>
     </tbody>
   </table>
 </div>
@@ -349,134 +372,151 @@ tbody td.muted { color: var(--muted); }
 <script>
 // ═══════════════════════════════════════════════════════════════════
 //  B1Report contract
-//  The agent sets window.__B1_AGENT_CONTROLLED__ = true before
-//  calling load(). Templates must not break if load() is called
-//  more than once (e.g. on refresh).
 // ═══════════════════════════════════════════════════════════════════
 window.B1Report = {
 
   meta: {
-    id:          "my-report-id",          // ← unique slug, matches manifest
-    name:        "My report name",        // ← display name
-    description: "What this report shows and when to use it — the AI reads this for intent matching",
-    tags:        ["tag1", "tag2"],        // ← keywords for intent matching
-    queries:     ["rows", "summary"]      // ← must match query keys in manifest.json
+    id:          "inventory-levels",
+    name:        "Inventory levels",
+    description: "Stock on hand by item and warehouse, reorder alerts for items below MinLevel, slow movers. Use when user asks about stock, inventory, warehouse, or items.",
+    tags:        ["inventory", "stock", "warehouse", "items", "reorder"],
+    queries:     ["items"]
   },
 
-  // Chart references — stored so they can be destroyed on reload
   _charts: {},
 
   load(data) {
     // ── Unpack ────────────────────────────────────────────────
-    const rows    = data.rows    || [];
-    const summary = data.summary || [];
+    const items   = data.items   || [];
     const base    = data.webClientBase || '';
+    const links   = data.webClientLinks || {};
     const company = data.company || '—';
 
     // ── Header & badge ────────────────────────────────────────
     const isDemo = !window.__B1_AGENT_CONTROLLED__;
-    document.getElementById('rpt-title').textContent   = this.meta.name;
     document.getElementById('rpt-company').textContent = company;
     document.getElementById('rpt-badge').textContent   = isDemo ? '● Demo' : '● Live';
     document.getElementById('rpt-badge').className     = 'badge ' + (isDemo ? 'badge-demo' : 'badge-live');
     document.getElementById('rpt-meta').textContent    =
-      `${rows.length} records · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
+      `${items.length} inventory items · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
     document.getElementById('rpt-ts').textContent =
       'Generated: ' + new Date().toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' });
 
-    // ── KPIs ─────────────────────────────────────────────────
-    // Replace with real calculations from your data
-    const total   = rows.reduce((s, r) => s + (r.DocTotal || 0), 0);
-    const balance = rows.reduce((s, r) => s + ((r.DocTotal || 0) - (r.PaidToDate || 0)), 0);
-
+    // ── Helpers ───────────────────────────────────────────────
     const fmtK = n => {
       if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
       if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
       return n.toLocaleString('da-DK');
     };
 
-    document.getElementById('kpi-1').textContent = fmtK(total);
-    document.getElementById('kpi-2').textContent = rows.length;
-    document.getElementById('kpi-3').textContent = rows.length ? fmtK(total / rows.length) : '—';
-    document.getElementById('kpi-4').textContent = fmtK(balance);
+    const totalOnHand = item => {
+      const wh = item.ItemWarehouseInfoCollection || [];
+      if (wh.length === 0) return item.OnHand || 0;
+      return wh.reduce((s, w) => s + (w.InStock || 0), 0);
+    };
+
+    const stockStatus = (onHand, min) => {
+      if (onHand <= 0)      return { key: 'out', label: 'Out of stock', dot: 'dot-red' };
+      if (onHand < min)     return { key: 'low', label: 'Below min',    dot: 'dot-amber' };
+      return                       { key: 'ok',  label: 'OK',           dot: 'dot-green' };
+    };
+
+    // ── Enrich items ──────────────────────────────────────────
+    const enriched = items.map(item => {
+      const onHand     = totalOnHand(item);
+      const min        = item.MinInventory || 0;
+      const max        = item.MaxInventory || 0;
+      const price      = item.LastPurchasePrice || 0;
+      const stockValue = onHand * price;
+      const gap        = Math.max(0, min - onHand);
+      const status     = stockStatus(onHand, min);
+      return { ...item, _onHand: onHand, _min: min, _max: max, _stockValue: stockValue, _gap: gap, _status: status };
+    });
+
+    // ── KPI calculations ──────────────────────────────────────
+    const totalValue   = enriched.reduce((s, i) => s + i._stockValue, 0);
+    const belowReorder = enriched.filter(i => i._status.key === 'low').length;
+    const outOfStock   = enriched.filter(i => i._status.key === 'out').length;
+
+    document.getElementById('kpi-1').textContent = items.length;
+    document.getElementById('kpi-2').textContent = fmtK(totalValue);
+    document.getElementById('kpi-3').textContent = belowReorder;
+    document.getElementById('kpi-4').textContent = outOfStock;
 
     const setDelta = (id, text, cls) => {
       const el = document.getElementById(id);
       el.textContent = text;
       el.className = 'kpi-delta ' + (cls || '');
     };
-    setDelta('kpi-1-d', '↑ 12.4% vs prev period', 'up');
-    setDelta('kpi-4-d', balance > 0 ? '↑ Action required' : '✓ All clear', balance > 0 ? 'down' : 'up');
+    setDelta('kpi-1-d', 'active inventory items');
+    setDelta('kpi-2-d', 'OnHand × Last Purchase Price');
+    setDelta('kpi-3-d', belowReorder > 0 ? '↑ Reorder required' : '✓ All stocked', belowReorder > 0 ? 'down' : 'up');
+    setDelta('kpi-4-d', outOfStock > 0 ? '↑ Immediate action' : '✓ None', outOfStock > 0 ? 'down' : 'up');
 
-    // ── Bar chart ─────────────────────────────────────────────
-    // Derive monthly buckets from rows, or use summary data if available
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    let barData;
-    if (summary.length) {
-      barData = summary.map(s => ({ label: monthNames[(s.Mo || 1) - 1], value: s.Revenue || 0 }));
+    // ── Warning banner ────────────────────────────────────────
+    const warningEl = document.getElementById('warning-below-min');
+    if (belowReorder > 0 || outOfStock > 0) {
+      warningEl.textContent = `⚠ ${outOfStock} item${outOfStock !== 1 ? 's' : ''} out of stock, ${belowReorder} below minimum — review reorder requirements`;
+      warningEl.classList.add('visible');
     } else {
-      const acc = {};
-      rows.forEach(r => {
-        const d = new Date(r.DocDate || Date.now());
-        const k = `${d.getFullYear()}-${d.getMonth()}`;
-        if (!acc[k]) acc[k] = { label: monthNames[d.getMonth()], value: 0, sort: d.getFullYear() * 100 + d.getMonth() };
-        acc[k].value += r.DocTotal || 0;
-      });
-      barData = Object.values(acc).sort((a, b) => a.sort - b.sort).slice(-6);
+      warningEl.classList.remove('visible');
     }
 
-    if (this._charts.main) this._charts.main.destroy();
-    this._charts.main = new Chart(
-      document.getElementById('chart-main').getContext('2d'),
+    // ── Top items by stock value (horizontal bar) ─────────────
+    const topByValue = [...enriched]
+      .sort((a, b) => b._stockValue - a._stockValue)
+      .slice(0, 15);
+
+    if (this._charts.value) this._charts.value.destroy();
+    this._charts.value = new Chart(
+      document.getElementById('chart-value').getContext('2d'),
       {
         type: 'bar',
         data: {
-          labels: barData.map(d => d.label),
+          labels: topByValue.map(i => i.ItemCode),
           datasets: [{
-            data: barData.map(d => d.value),
-            backgroundColor: barData.map((_, i) =>
-              i === barData.length - 1 ? 'rgba(37,99,235,0.85)' : 'rgba(37,99,235,0.22)'),
-            borderColor: barData.map((_, i) =>
-              i === barData.length - 1 ? 'rgba(37,99,235,1)' : 'rgba(37,99,235,0.45)'),
+            data: topByValue.map(i => i._stockValue),
+            backgroundColor: 'rgba(37,99,235,0.75)',
+            borderColor: 'rgba(37,99,235,1)',
             borderWidth: 1,
             borderRadius: 3
           }]
         },
         options: {
+          indexAxis: 'y',
           responsive: true,
           maintainAspectRatio: true,
           plugins: {
             legend: { display: false },
-            tooltip: B1Report._tooltipDefaults(data.rows?.[0]?.DocCur || 'DKK')
+            tooltip: B1Report._tooltipDefaults()
           },
           scales: {
-            x: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } },
-            y: {
+            x: {
               grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false },
               border: { display: false, dash: [3, 3] },
               ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 4 }
-            }
+            },
+            y: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } }
           }
         }
       }
     );
 
-    // ── Donut chart ───────────────────────────────────────────
-    // Replace slices with whatever breakdown makes sense for your report
-    const paid    = rows.filter(r => r.DocStatus === 'C').length;
-    const partial = rows.filter(r => r.DocStatus === 'O' && r.PaidToDate > 0).length;
-    const open    = rows.filter(r => r.DocStatus === 'O' && !r.PaidToDate).length;
+    // ── Stock health donut ────────────────────────────────────
+    const okCount  = enriched.filter(i => i._status.key === 'ok').length;
+    const lowCount = enriched.filter(i => i._status.key === 'low').length;
+    const outCount = enriched.filter(i => i._status.key === 'out').length;
 
-    if (this._charts.donut) this._charts.donut.destroy();
-    this._charts.donut = new Chart(
-      document.getElementById('chart-donut').getContext('2d'),
+    if (this._charts.health) this._charts.health.destroy();
+    this._charts.health = new Chart(
+      document.getElementById('chart-health').getContext('2d'),
       {
         type: 'doughnut',
         data: {
-          labels: ['Paid', 'Partial', 'Open'],
+          labels: ['OK', 'Below Min', 'Out of Stock'],
           datasets: [{
-            data: [paid, partial, open],
-            backgroundColor: ['rgba(5,150,105,0.85)', 'rgba(37,99,235,0.85)', 'rgba(217,119,6,0.85)'],
+            data: [okCount, lowCount, outCount],
+            backgroundColor: ['rgba(5,150,105,0.85)', 'rgba(217,119,6,0.85)', 'rgba(220,38,38,0.85)'],
             borderColor: '#ffffff',
             borderWidth: 3,
             hoverOffset: 4
@@ -503,43 +543,53 @@ window.B1Report = {
       }
     );
 
-    // ── Table ─────────────────────────────────────────────────
+    // ── Items table ───────────────────────────────────────────
     const tbody = document.getElementById('tbl-body');
     tbody.innerHTML = '';
 
-    if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty">No data returned from Service Layer</td></tr>';
+    if (!enriched.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">No inventory items returned from Service Layer</td></tr>';
       return;
     }
 
-    rows.slice(0, 50).forEach(row => {
-      const balance = (row.DocTotal || 0) - (row.PaidToDate || 0);
-      const isPaid  = row.DocStatus === 'C' || balance <= 0;
-      const isOpen  = row.DocStatus === 'O' && !row.PaidToDate;
+    // Sort: out first, then low (by gap desc), then ok (by value desc)
+    const statusOrder = { out: 0, low: 1, ok: 2 };
+    const sorted = [...enriched].sort((a, b) => {
+      const so = statusOrder[a._status.key] - statusOrder[b._status.key];
+      if (so !== 0) return so;
+      if (a._status.key === 'low') return b._gap - a._gap;
+      return b._stockValue - a._stockValue;
+    });
 
-      // Deeplink — adjust entity and key field to match your report
-      const link = base ? `${base}/webapp/index.html#/OINV/${row.DocEntry}` : '#';
-      const dateStr = row.DocDate
-        ? new Date(row.DocDate).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' })
-        : '—';
+    sorted.forEach(item => {
+      const link = (base && links.item && item.ItemCode)
+        ? base + links.item.replace('{ItemCode}', item.ItemCode) : '';
+
+      const gapCell = item._gap > 0
+        ? `<span style="color:var(--red);font-weight:500">${item._gap.toLocaleString('da-DK')}</span>`
+        : '<span style="color:var(--muted)">—</span>';
 
       const tr = document.createElement('tr');
-      tr.onclick = () => { if (base && row.DocEntry) window.open(link, '_blank'); };
+      tr.onclick = () => { if (link) window.open(link, '_blank'); };
       tr.innerHTML = `
         <td>
-          <div class="row-primary">${row.CardName || row.ItemCode || '—'}</div>
-          <div class="row-secondary">${row.CardCode || ''}</div>
+          <div class="row-primary">${item.ItemName || item.ItemCode}</div>
+          <div class="row-secondary">${item.ItemCode}</div>
         </td>
-        <td class="mono muted">${row.DocNum || '—'}</td>
-        <td class="mono muted">${dateStr}</td>
+        <td class="r mono">${item._onHand.toLocaleString('da-DK')}</td>
+        <td class="r mono muted">${item._min > 0 ? item._min.toLocaleString('da-DK') : '—'}</td>
+        <td class="r mono muted">${item._max > 0 ? item._max.toLocaleString('da-DK') : '—'}</td>
+        <td class="r mono">${gapCell}</td>
+        <td class="r mono">${fmtK(item._stockValue)}</td>
         <td>
           <span class="pill">
-            <span class="dot ${isPaid ? 'dot-green' : isOpen ? 'dot-amber' : 'dot-blue'}"></span>
-            ${isPaid ? 'Paid' : isOpen ? 'Open' : 'Partial'}
+            <span class="dot ${item._status.dot}"></span>
+            ${item._status.label}
           </span>
         </td>
-        <td class="r mono">${(row.DocTotal || 0).toLocaleString('da-DK')}</td>
-        <td class="r link-cell">${base && row.DocEntry ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
+        <td class="r link-cell">${link
+          ? `<a href="${link}" target="_blank">Open →</a>`
+          : '<span style="color:var(--border)">—</span>'}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -567,30 +617,42 @@ window.B1Report = {
 };
 
 // ═══════════════════════════════════════════════════════════════════
-//  Demo mode — loads mock data when opened directly in a browser.
-//  Replace MOCK with realistic sample data for your report type.
-//  The agent skips this block by setting __B1_AGENT_CONTROLLED__.
+//  Demo mode
 // ═══════════════════════════════════════════════════════════════════
 (function demoIfStandalone() {
   if (window.__B1_AGENT_CONTROLLED__) return;
 
   const MOCK = {
-    rows: [
-      { DocEntry:1, DocNum:4821, CardCode:"C0042", CardName:"Novo Industri A/S",      DocDate:"2025-03-18", DocDueDate:"2025-04-18", DocTotal:84200,  PaidToDate:84200,  DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:2, DocNum:4820, CardCode:"C0017", CardName:"Danfoss Group",           DocDate:"2025-03-15", DocDueDate:"2025-04-15", DocTotal:142500, PaidToDate:71250,  DocCur:"DKK", DocStatus:"O" },
-      { DocEntry:3, DocNum:4819, CardCode:"C0088", CardName:"Vestas Wind Systems",     DocDate:"2025-03-10", DocDueDate:"2025-04-10", DocTotal:67800,  PaidToDate:0,      DocCur:"DKK", DocStatus:"O" },
-      { DocEntry:4, DocNum:4818, CardCode:"C0031", CardName:"Arla Foods amba",         DocDate:"2025-03-07", DocDueDate:"2025-03-31", DocTotal:38400,  PaidToDate:38400,  DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:5, DocNum:4817, CardCode:"C0055", CardName:"DSV Panalpina A/S",       DocDate:"2025-02-28", DocDueDate:"2025-03-28", DocTotal:95100,  PaidToDate:0,      DocCur:"DKK", DocStatus:"O" },
-      { DocEntry:6, DocNum:4816, CardCode:"C0017", CardName:"Danfoss Group",           DocDate:"2025-02-20", DocDueDate:"2025-03-20", DocTotal:118000, PaidToDate:118000, DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:7, DocNum:4815, CardCode:"C0099", CardName:"Ørsted A/S",              DocDate:"2025-02-14", DocDueDate:"2025-03-14", DocTotal:201000, PaidToDate:201000, DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:8, DocNum:4814, CardCode:"C0042", CardName:"Novo Industri A/S",       DocDate:"2025-02-05", DocDueDate:"2025-03-05", DocTotal:56700,  PaidToDate:56700,  DocCur:"DKK", DocStatus:"C" },
-    ],
-    summary: [
-      { Mo:10, Revenue:381000 }, { Mo:11, Revenue:428000 }, { Mo:12, Revenue:512000 },
-      { Mo:1,  Revenue:398000 }, { Mo:2,  Revenue:634000 }, { Mo:3,  Revenue:487000 },
+    items: [
+      // OK items
+      { ItemCode:"ITM-0021", ItemName:"Industrial Pump Seal Kit",    MinInventory:10, MaxInventory:100, LastPurchasePrice:485,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:64 },{ WarehouseCode:"02", InStock:18 }] },
+      { ItemCode:"ITM-0034", ItemName:"Hydraulic Cylinder 80mm",     MinInventory:5,  MaxInventory:40,  LastPurchasePrice:1240,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:22 }] },
+      { ItemCode:"ITM-0058", ItemName:"Bearing Assembly Type B",     MinInventory:20, MaxInventory:200, LastPurchasePrice:127,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:145 },{ WarehouseCode:"03", InStock:30 }] },
+      { ItemCode:"ITM-0072", ItemName:"Stainless Steel Valve DN50",  MinInventory:8,  MaxInventory:60,  LastPurchasePrice:890,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:31 }] },
+      { ItemCode:"ITM-0091", ItemName:"Control Panel 24V DC",        MinInventory:3,  MaxInventory:20,  LastPurchasePrice:3450,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:9 }] },
+      { ItemCode:"ITM-0103", ItemName:"O-Ring Set EPDM 100pcs",      MinInventory:50, MaxInventory:500, LastPurchasePrice:38,    ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:320 },{ WarehouseCode:"02", InStock:80 }] },
+      { ItemCode:"ITM-0115", ItemName:"Pneumatic Fitting 12mm",      MinInventory:100,MaxInventory:800, LastPurchasePrice:14,    ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:512 }] },
+      { ItemCode:"ITM-0128", ItemName:"Motor Drive VFD 7.5kW",       MinInventory:2,  MaxInventory:12,  LastPurchasePrice:8200,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:5 }] },
+      { ItemCode:"ITM-0144", ItemName:"Safety Relay Module",         MinInventory:5,  MaxInventory:30,  LastPurchasePrice:620,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:17 }] },
+      { ItemCode:"ITM-0162", ItemName:"Proximity Sensor NPN 10mm",   MinInventory:10, MaxInventory:80,  LastPurchasePrice:185,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:48 },{ WarehouseCode:"02", InStock:12 }] },
+      { ItemCode:"ITM-0177", ItemName:"Conveyor Belt 2000×400mm",    MinInventory:2,  MaxInventory:15,  LastPurchasePrice:4100,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:7 }] },
+      { ItemCode:"ITM-0189", ItemName:"Compressed Air Filter 1/2\"", MinInventory:15, MaxInventory:120, LastPurchasePrice:145,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:66 }] },
+      // Below min items
+      { ItemCode:"ITM-0205", ItemName:"Heat Exchanger Gasket Set",   MinInventory:20, MaxInventory:100, LastPurchasePrice:215,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:7 }] },
+      { ItemCode:"ITM-0218", ItemName:"Solenoid Valve 24VDC",        MinInventory:10, MaxInventory:60,  LastPurchasePrice:560,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:3 }] },
+      { ItemCode:"ITM-0231", ItemName:"Pressure Transmitter 0-10bar",MinInventory:5,  MaxInventory:25,  LastPurchasePrice:1850,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:2 }] },
+      { ItemCode:"ITM-0245", ItemName:"Coupling Spider PU 65mm",     MinInventory:8,  MaxInventory:50,  LastPurchasePrice:98,    ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:1 }] },
+      { ItemCode:"ITM-0258", ItemName:"Cable Gland M20 Stainless",   MinInventory:50, MaxInventory:300, LastPurchasePrice:22,    ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:18 },{ WarehouseCode:"02", InStock:5 }] },
+      // Out of stock items
+      { ItemCode:"ITM-0274", ItemName:"Flow Meter DN25 Ultrasonic",  MinInventory:3,  MaxInventory:15,  LastPurchasePrice:6400,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:0 }] },
+      { ItemCode:"ITM-0289", ItemName:"PLC Module Analog 4ch",       MinInventory:2,  MaxInventory:10,  LastPurchasePrice:2850,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:0 },{ WarehouseCode:"02", InStock:0 }] },
+      { ItemCode:"ITM-0301", ItemName:"Flexible Conduit 25mm 50m",   MinInventory:10, MaxInventory:60,  LastPurchasePrice:310,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:0 }] },
     ],
     company:       "CRONUS_DK (demo)",
-    webClientBase: ""   // leave empty in demo so links gracefully show "—"
+    webClientBase: "",
+    webClientLinks: {
+      item: "/webapp/index.html#/OITM/{ItemCode}"
+    }
   };
 
   window.B1Report.load(MOCK);
