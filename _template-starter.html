@@ -369,8 +369,8 @@ window.B1Report = {
   load(data) {
     // ── Unpack ────────────────────────────────────────────────
     const rows    = data.rows    || [];
-    const summary = data.summary || [];
     const base    = data.webClientBase || '';
+    const links   = data.webClientLinks || {};
     const company = data.company || '—';
 
     // ── Header & badge ────────────────────────────────────────
@@ -409,21 +409,16 @@ window.B1Report = {
     setDelta('kpi-4-d', balance > 0 ? '↑ Action required' : '✓ All clear', balance > 0 ? 'down' : 'up');
 
     // ── Bar chart ─────────────────────────────────────────────
-    // Derive monthly buckets from rows, or use summary data if available
+    // Derive monthly buckets from rows
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    let barData;
-    if (summary.length) {
-      barData = summary.map(s => ({ label: monthNames[(s.Mo || 1) - 1], value: s.Revenue || 0 }));
-    } else {
-      const acc = {};
-      rows.forEach(r => {
-        const d = new Date(r.DocDate || Date.now());
-        const k = `${d.getFullYear()}-${d.getMonth()}`;
-        if (!acc[k]) acc[k] = { label: monthNames[d.getMonth()], value: 0, sort: d.getFullYear() * 100 + d.getMonth() };
-        acc[k].value += r.DocTotal || 0;
-      });
-      barData = Object.values(acc).sort((a, b) => a.sort - b.sort).slice(-6);
-    }
+    const acc = {};
+    rows.forEach(r => {
+      const d = new Date(r.DocDate || Date.now());
+      const k = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}`;
+      if (!acc[k]) acc[k] = { label: monthNames[d.getMonth()], value: 0, sort: k };
+      acc[k].value += r.DocTotal || 0;
+    });
+    const barData = Object.values(acc).sort((a, b) => a.sort.localeCompare(b.sort)).slice(-6);
 
     if (this._charts.main) this._charts.main.destroy();
     this._charts.main = new Chart(
@@ -447,7 +442,7 @@ window.B1Report = {
           maintainAspectRatio: true,
           plugins: {
             legend: { display: false },
-            tooltip: B1Report._tooltipDefaults(data.rows?.[0]?.DocCur || 'DKK')
+            tooltip: B1Report._tooltipDefaults(rows[0]?.DocCurrency || 'DKK')
           },
           scales: {
             x: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } },
@@ -463,9 +458,9 @@ window.B1Report = {
 
     // ── Donut chart ───────────────────────────────────────────
     // Replace slices with whatever breakdown makes sense for your report
-    const paid    = rows.filter(r => r.DocStatus === 'C').length;
-    const partial = rows.filter(r => r.DocStatus === 'O' && r.PaidToDate > 0).length;
-    const open    = rows.filter(r => r.DocStatus === 'O' && !r.PaidToDate).length;
+    const paid    = rows.filter(r => r.DocumentStatus === 'bost_Close').length;
+    const partial = rows.filter(r => r.DocumentStatus === 'bost_Open' && r.PaidToDate > 0).length;
+    const open    = rows.filter(r => r.DocumentStatus === 'bost_Open' && !(r.PaidToDate > 0)).length;
 
     if (this._charts.donut) this._charts.donut.destroy();
     this._charts.donut = new Chart(
@@ -514,17 +509,19 @@ window.B1Report = {
 
     rows.slice(0, 50).forEach(row => {
       const balance = (row.DocTotal || 0) - (row.PaidToDate || 0);
-      const isPaid  = row.DocStatus === 'C' || balance <= 0;
-      const isOpen  = row.DocStatus === 'O' && !row.PaidToDate;
+      const isPaid  = row.DocumentStatus === 'bost_Close' || balance <= 0;
+      const isOpen  = row.DocumentStatus === 'bost_Open' && !(row.PaidToDate > 0);
 
-      // Deeplink — adjust entity and key field to match your report
-      const link = base ? `${base}/webapp/index.html#/OINV/${row.DocEntry}` : '#';
+      // Deeplink — uses webClientLinks from manifest, adjust link key and placeholder to match your report
+      const link = (base && links.invoice && row.DocEntry)
+        ? base + links.invoice.replace('{DocEntry}', row.DocEntry)
+        : '';
       const dateStr = row.DocDate
         ? new Date(row.DocDate).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' })
         : '—';
 
       const tr = document.createElement('tr');
-      tr.onclick = () => { if (base && row.DocEntry) window.open(link, '_blank'); };
+      tr.onclick = () => { if (link) window.open(link, '_blank'); };
       tr.innerHTML = `
         <td>
           <div class="row-primary">${row.CardName || row.ItemCode || '—'}</div>
@@ -539,7 +536,7 @@ window.B1Report = {
           </span>
         </td>
         <td class="r mono">${(row.DocTotal || 0).toLocaleString('da-DK')}</td>
-        <td class="r link-cell">${base && row.DocEntry ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
+        <td class="r link-cell">${link ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -576,21 +573,20 @@ window.B1Report = {
 
   const MOCK = {
     rows: [
-      { DocEntry:1, DocNum:4821, CardCode:"C0042", CardName:"Novo Industri A/S",      DocDate:"2025-03-18", DocDueDate:"2025-04-18", DocTotal:84200,  PaidToDate:84200,  DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:2, DocNum:4820, CardCode:"C0017", CardName:"Danfoss Group",           DocDate:"2025-03-15", DocDueDate:"2025-04-15", DocTotal:142500, PaidToDate:71250,  DocCur:"DKK", DocStatus:"O" },
-      { DocEntry:3, DocNum:4819, CardCode:"C0088", CardName:"Vestas Wind Systems",     DocDate:"2025-03-10", DocDueDate:"2025-04-10", DocTotal:67800,  PaidToDate:0,      DocCur:"DKK", DocStatus:"O" },
-      { DocEntry:4, DocNum:4818, CardCode:"C0031", CardName:"Arla Foods amba",         DocDate:"2025-03-07", DocDueDate:"2025-03-31", DocTotal:38400,  PaidToDate:38400,  DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:5, DocNum:4817, CardCode:"C0055", CardName:"DSV Panalpina A/S",       DocDate:"2025-02-28", DocDueDate:"2025-03-28", DocTotal:95100,  PaidToDate:0,      DocCur:"DKK", DocStatus:"O" },
-      { DocEntry:6, DocNum:4816, CardCode:"C0017", CardName:"Danfoss Group",           DocDate:"2025-02-20", DocDueDate:"2025-03-20", DocTotal:118000, PaidToDate:118000, DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:7, DocNum:4815, CardCode:"C0099", CardName:"Ørsted A/S",              DocDate:"2025-02-14", DocDueDate:"2025-03-14", DocTotal:201000, PaidToDate:201000, DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:8, DocNum:4814, CardCode:"C0042", CardName:"Novo Industri A/S",       DocDate:"2025-02-05", DocDueDate:"2025-03-05", DocTotal:56700,  PaidToDate:56700,  DocCur:"DKK", DocStatus:"C" },
-    ],
-    summary: [
-      { Mo:10, Revenue:381000 }, { Mo:11, Revenue:428000 }, { Mo:12, Revenue:512000 },
-      { Mo:1,  Revenue:398000 }, { Mo:2,  Revenue:634000 }, { Mo:3,  Revenue:487000 },
+      { DocEntry:1, DocNum:4821, CardCode:"C0042", CardName:"Novo Industri A/S",      DocDate:"2025-03-18", DocDueDate:"2025-04-18", DocTotal:84200,  PaidToDate:84200,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:2, DocNum:4820, CardCode:"C0017", CardName:"Danfoss Group",           DocDate:"2025-03-15", DocDueDate:"2025-04-15", DocTotal:142500, PaidToDate:71250,  DocCurrency:"DKK", DocumentStatus:"bost_Open",  Cancelled:"tNO" },
+      { DocEntry:3, DocNum:4819, CardCode:"C0088", CardName:"Vestas Wind Systems",     DocDate:"2025-03-10", DocDueDate:"2025-04-10", DocTotal:67800,  PaidToDate:0,      DocCurrency:"DKK", DocumentStatus:"bost_Open",  Cancelled:"tNO" },
+      { DocEntry:4, DocNum:4818, CardCode:"C0031", CardName:"Arla Foods amba",         DocDate:"2025-03-07", DocDueDate:"2025-03-31", DocTotal:38400,  PaidToDate:38400,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:5, DocNum:4817, CardCode:"C0055", CardName:"DSV Panalpina A/S",       DocDate:"2025-02-28", DocDueDate:"2025-03-28", DocTotal:95100,  PaidToDate:0,      DocCurrency:"DKK", DocumentStatus:"bost_Open",  Cancelled:"tNO" },
+      { DocEntry:6, DocNum:4816, CardCode:"C0017", CardName:"Danfoss Group",           DocDate:"2025-02-20", DocDueDate:"2025-03-20", DocTotal:118000, PaidToDate:118000, DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:7, DocNum:4815, CardCode:"C0099", CardName:"Ørsted A/S",              DocDate:"2025-02-14", DocDueDate:"2025-03-14", DocTotal:201000, PaidToDate:201000, DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:8, DocNum:4814, CardCode:"C0042", CardName:"Novo Industri A/S",       DocDate:"2025-02-05", DocDueDate:"2025-03-05", DocTotal:56700,  PaidToDate:56700,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
     ],
     company:       "CRONUS_DK (demo)",
-    webClientBase: ""   // leave empty in demo so links gracefully show "—"
+    webClientBase: "",
+    webClientLinks: {
+      invoice: "/webapp/index.html#/OINV/{DocEntry}"
+    }
   };
 
   window.B1Report.load(MOCK);
