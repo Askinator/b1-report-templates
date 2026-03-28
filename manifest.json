@@ -20,13 +20,9 @@
           "key": "invoices",
           "endpoint": "OINV",
           "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,PaidToDate,DocCur,DocStatus",
-          "filter": "DocDate ge '{date_6m_ago}' and Canceled eq 'N'",
+          "filter": "DocDate ge '{date_6m_ago}' and Cancelled eq 'N'",
           "orderby": "DocDate desc",
           "top": 200
-        },
-        {
-          "key": "monthly",
-          "sql": "SELECT MONTH(T0.\"DocDate\") AS Mo, YEAR(T0.\"DocDate\") AS Yr, SUM(T0.\"DocTotal\") AS Revenue FROM OINV T0 WHERE T0.\"DocDate\" >= DATEADD(MONTH,-6,GETDATE()) AND T0.\"CANCELED\"='N' GROUP BY YEAR(T0.\"DocDate\"), MONTH(T0.\"DocDate\") ORDER BY Yr, Mo"
         }
       ],
       "aiHints": {
@@ -47,7 +43,7 @@
           "key": "openInvoices",
           "endpoint": "OINV",
           "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,PaidToDate,DocCur",
-          "filter": "DocStatus eq 'O' and Canceled eq 'N'",
+          "filter": "DocStatus eq 'O' and Cancelled eq 'N'",
           "orderby": "DocDueDate asc",
           "top": 500
         }
@@ -100,7 +96,7 @@
           "key": "purchaseOrders",
           "endpoint": "OPOR",
           "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,DocCur,DocStatus",
-          "filter": "DocDate ge '{date_6m_ago}' and Canceled eq 'N'",
+          "filter": "DocDate ge '{date_6m_ago}' and Cancelled eq 'N'",
           "orderby": "DocDate desc",
           "top": 200
         }

@@ -380,7 +380,7 @@ window.B1Report = {
     name:        "Sales performance",
     description: "Revenue trend, top customers by volume, invoice status breakdown — rolling 6 months. Use when user asks about sales, revenue, customers, or invoices.",
     tags:        ["sales", "revenue", "invoices", "customers"],
-    queries:     ["invoices", "monthly"]
+    queries:     ["invoices"]
   },
 
   _charts: {},
@@ -390,6 +390,7 @@ window.B1Report = {
     const invoices = data.invoices || [];
     const monthly  = data.monthly  || [];
     const base     = data.webClientBase || '';
+    const links    = data.webClientLinks || {};
     const company  = data.company || '—';
     const currency = invoices[0]?.DocCur || 'DKK';
 
@@ -564,10 +565,12 @@ window.B1Report = {
     customers.forEach(c => {
       const sharePct = Math.round((c.total / totalRevenue) * 100);
       const barWidthPct = Math.round((c.total / maxTotal) * 100);
-      const link = base ? `${base}/webapp/index.html#/OCRD/${c.CardCode}` : '#';
+      const link = (base && links.customer && c.CardCode)
+        ? base + links.customer.replace('{CardCode}', c.CardCode)
+        : '';
 
       const tr = document.createElement('tr');
-      tr.onclick = () => { if (base && c.CardCode) window.open(link, '_blank'); };
+      tr.onclick = () => { if (link) window.open(link, '_blank'); };
       tr.innerHTML = `
         <td>
           <div class="row-primary">${c.CardName}</div>
@@ -581,7 +584,7 @@ window.B1Report = {
           </div>
         </td>
         <td class="r mono muted">${sharePct}%</td>
-        <td class="r link-cell">${base && c.CardCode ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
+        <td class="r link-cell">${link ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -634,16 +637,12 @@ window.B1Report = {
       { DocEntry:115, DocNum:5007, CardCode:"C0042", CardName:"Novo Industri A/S",      DocDate:"2025-10-30", DocDueDate:"2025-11-30", DocTotal:198600,  PaidToDate:198600,  DocCur:"DKK", DocStatus:"C" },
       { DocEntry:116, DocNum:5006, CardCode:"C0017", CardName:"Danfoss Group",          DocDate:"2025-10-15", DocDueDate:"2025-11-15", DocTotal:162300,  PaidToDate:162300,  DocCur:"DKK", DocStatus:"C" },
     ],
-    monthly: [
-      { Mo:10, Yr:2025, Revenue:360900 },
-      { Mo:11, Yr:2025, Revenue:126900 },
-      { Mo:12, Yr:2025, Revenue:410500 },
-      { Mo:1,  Yr:2026, Revenue:147600 },
-      { Mo:2,  Yr:2026, Revenue:634800 },
-      { Mo:3,  Yr:2026, Revenue:487000 },
-    ],
     company:       "CRONUS_DK (demo)",
-    webClientBase: ""
+    webClientBase: "",
+    webClientLinks: {
+      customer: "/webapp/index.html#/OCRD/{CardCode}",
+      invoice:  "/webapp/index.html#/OINV/{DocEntry}"
+    }
   };
 
   window.B1Report.load(MOCK);
