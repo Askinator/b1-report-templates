@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B1 Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0f1117;
+  --surface:  #181c27;
+  --border:   rgba(255,255,255,0.07);
+  --text:     #e8eaf2;
+  --muted:    #7b82a0;
+  --blue:     #4f8ef7;
+  --green:    #38d9a9;
+  --amber:    #f4a14b;
+  --red:      #f06b6b;
+  --font:     'DM Sans', sans-serif;
+  --mono:     'DM Mono', monospace;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.header-left h1 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  color: var(--text);
+}
+.header-left .meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 4px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.badge-demo  { color: var(--amber); background: rgba(244,161,75,0.08); border-color: rgba(244,161,75,0.25); }
+.badge-live  { color: var(--green); background: rgba(56,217,169,0.08); border-color: rgba(56,217,169,0.25); }
+.company-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  padding: 3px 9px;
+  border-radius: 4px;
+}
+
+/* ── KPI cards ───────────────────────────────────────────────── */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.kpi::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  border-radius: 8px 8px 0 0;
+}
+.kpi-blue::after  { background: var(--blue); }
+.kpi-green::after { background: var(--green); }
+.kpi-amber::after { background: var(--amber); }
+.kpi-red::after   { background: var(--red); }
+
+.kpi-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+.kpi-value {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.kpi-delta {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.kpi-delta.up   { color: var(--green); }
+.kpi-delta.down { color: var(--red); }
+
+/* ── Cards ───────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+.card-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+.card-hint {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* ── Two-column chart row ────────────────────────────────────── */
+.chart-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* ── Table ───────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; }
+
+thead th {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  text-align: left;
+  padding: 0 10px 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+thead th.r { text-align: right; padding-right: 0; }
+
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(255,255,255,0.03); }
+
+tbody td {
+  padding: 9px 10px 9px 0;
+  font-size: 12px;
+  color: var(--text);
+  vertical-align: middle;
+}
+tbody td.r { text-align: right; padding-right: 0; }
+tbody td.mono { font-family: var(--mono); }
+tbody td.muted { color: var(--muted); }
+
+.row-primary   { font-weight: 500; color: var(--text); }
+.row-secondary { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-green { background: var(--green); }
+.dot-amber { background: var(--amber); }
+.dot-red   { background: var(--red); }
+.dot-blue  { background: var(--blue); }
+
+.link-cell a {
+  color: var(--blue);
+  text-decoration: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.link-cell a:hover { opacity: 1; text-decoration: underline; }
+
+/* ── Footer ──────────────────────────────────────────────────── */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 14px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.footer span {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* ── Empty state ─────────────────────────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+@media (max-width: 640px) {
+  .kpi-row    { grid-template-columns: repeat(2, 1fr); }
+  .chart-row  { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="header">
+  <div class="header-left">
+    <h1 id="rpt-title">Report title</h1>
+    <div class="meta" id="rpt-meta">Waiting for data…</div>
+  </div>
+  <div class="header-right">
+    <span class="badge badge-demo" id="rpt-badge">● Demo</span>
+    <span class="company-tag" id="rpt-company">—</span>
+  </div>
+</div>
+
+<!-- ── KPI row ── -->
+<div class="kpi-row">
+  <div class="kpi kpi-blue">
+    <div class="kpi-label">KPI one</div>
+    <div class="kpi-value" id="kpi-1">—</div>
+    <div class="kpi-delta" id="kpi-1-d"></div>
+  </div>
+  <div class="kpi kpi-green">
+    <div class="kpi-label">KPI two</div>
+    <div class="kpi-value" id="kpi-2">—</div>
+    <div class="kpi-delta" id="kpi-2-d"></div>
+  </div>
+  <div class="kpi kpi-amber">
+    <div class="kpi-label">KPI three</div>
+    <div class="kpi-value" id="kpi-3">—</div>
+    <div class="kpi-delta" id="kpi-3-d"></div>
+  </div>
+  <div class="kpi kpi-red">
+    <div class="kpi-label">KPI four</div>
+    <div class="kpi-value" id="kpi-4">—</div>
+    <div class="kpi-delta" id="kpi-4-d"></div>
+  </div>
+</div>
+
+<!-- ── Charts ── -->
+<div class="chart-row">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Bar / line chart</span>
+      <span class="card-hint">ENTITY."Field" by period</span>
+    </div>
+    <canvas id="chart-main" height="140"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Breakdown</span>
+      <span class="card-hint">by category</span>
+    </div>
+    <canvas id="chart-donut" height="140"></canvas>
+  </div>
+</div>
+
+<!-- ── Table ── -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Detail table</span>
+    <span class="card-hint">ENTITY · key fields</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Name / description</th>
+        <th>Code</th>
+        <th>Date</th>
+        <th>Status</th>
+        <th class="r">Amount</th>
+        <th class="r">Open in SAP</th>
+      </tr>
+    </thead>
+    <tbody id="tbl-body">
+      <tr><td colspan="6" class="empty">Waiting for data…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Footer ── -->
+<div class="footer">
+  <span id="rpt-ts">—</span>
+  <span id="rpt-sl">SAP Business One · Service Layer</span>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  B1Report contract
+//  The agent sets window.__B1_AGENT_CONTROLLED__ = true before
+//  calling load(). Templates must not break if load() is called
+//  more than once (e.g. on refresh).
+// ═══════════════════════════════════════════════════════════════════
+window.B1Report = {
+
+  meta: {
+    id:          "my-report-id",          // ← unique slug, matches manifest
+    name:        "My report name",        // ← display name
+    description: "What this report shows and when to use it — the AI reads this for intent matching",
+    tags:        ["tag1", "tag2"],        // ← keywords for intent matching
+    queries:     ["rows", "summary"]      // ← must match query keys in manifest.json
+  },
+
+  // Chart references — stored so they can be destroyed on reload
+  _charts: {},
+
+  load(data) {
+    // ── Unpack ────────────────────────────────────────────────
+    const rows    = data.rows    || [];
+    const summary = data.summary || [];
+    const base    = data.webClientBase || '';
+    const company = data.company || '—';
+
+    // ── Header & badge ────────────────────────────────────────
+    const isDemo = !window.__B1_AGENT_CONTROLLED__;
+    document.getElementById('rpt-title').textContent   = this.meta.name;
+    document.getElementById('rpt-company').textContent = company;
+    document.getElementById('rpt-badge').textContent   = isDemo ? '● Demo' : '● Live';
+    document.getElementById('rpt-badge').className     = 'badge ' + (isDemo ? 'badge-demo' : 'badge-live');
+    document.getElementById('rpt-meta').textContent    =
+      `${rows.length} records · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
+    document.getElementById('rpt-ts').textContent =
+      'Generated: ' + new Date().toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' });
+
+    // ── KPIs ─────────────────────────────────────────────────
+    // Replace with real calculations from your data
+    const total   = rows.reduce((s, r) => s + (r.DocTotal || 0), 0);
+    const balance = rows.reduce((s, r) => s + ((r.DocTotal || 0) - (r.PaidToDate || 0)), 0);
+
+    const fmtK = n => {
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+      return n.toLocaleString('da-DK');
+    };
+
+    document.getElementById('kpi-1').textContent = fmtK(total);
+    document.getElementById('kpi-2').textContent = rows.length;
+    document.getElementById('kpi-3').textContent = rows.length ? fmtK(total / rows.length) : '—';
+    document.getElementById('kpi-4').textContent = fmtK(balance);
+
+    const setDelta = (id, text, cls) => {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'kpi-delta ' + (cls || '');
+    };
+    setDelta('kpi-1-d', '↑ 12.4% vs prev period', 'up');
+    setDelta('kpi-4-d', balance > 0 ? '↑ Action required' : '✓ All clear', balance > 0 ? 'down' : 'up');
+
+    // ── Bar chart ─────────────────────────────────────────────
+    // Derive monthly buckets from rows, or use summary data if available
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    let barData;
+    if (summary.length) {
+      barData = summary.map(s => ({ label: monthNames[(s.Mo || 1) - 1], value: s.Revenue || 0 }));
+    } else {
+      const acc = {};
+      rows.forEach(r => {
+        const d = new Date(r.DocDate || Date.now());
+        const k = `${d.getFullYear()}-${d.getMonth()}`;
+        if (!acc[k]) acc[k] = { label: monthNames[d.getMonth()], value: 0, sort: d.getFullYear() * 100 + d.getMonth() };
+        acc[k].value += r.DocTotal || 0;
+      });
+      barData = Object.values(acc).sort((a, b) => a.sort - b.sort).slice(-6);
+    }
+
+    if (this._charts.main) this._charts.main.destroy();
+    this._charts.main = new Chart(
+      document.getElementById('chart-main').getContext('2d'),
+      {
+        type: 'bar',
+        data: {
+          labels: barData.map(d => d.label),
+          datasets: [{
+            data: barData.map(d => d.value),
+            backgroundColor: barData.map((_, i) =>
+              i === barData.length - 1 ? 'rgba(79,142,247,0.85)' : 'rgba(79,142,247,0.25)'),
+            borderColor: barData.map((_, i) =>
+              i === barData.length - 1 ? 'rgba(79,142,247,1)' : 'rgba(79,142,247,0.5)'),
+            borderWidth: 1,
+            borderRadius: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: B1Report._tooltipDefaults(data.rows?.[0]?.DocCur || 'DKK')
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)', drawTicks: false },
+              border: { display: false, dash: [3, 3] },
+              ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 4 }
+            }
+          }
+        }
+      }
+    );
+
+    // ── Donut chart ───────────────────────────────────────────
+    // Replace slices with whatever breakdown makes sense for your report
+    const paid    = rows.filter(r => r.DocStatus === 'C').length;
+    const partial = rows.filter(r => r.DocStatus === 'O' && r.PaidToDate > 0).length;
+    const open    = rows.filter(r => r.DocStatus === 'O' && !r.PaidToDate).length;
+
+    if (this._charts.donut) this._charts.donut.destroy();
+    this._charts.donut = new Chart(
+      document.getElementById('chart-donut').getContext('2d'),
+      {
+        type: 'doughnut',
+        data: {
+          labels: ['Paid', 'Partial', 'Open'],
+          datasets: [{
+            data: [paid, partial, open],
+            backgroundColor: ['rgba(56,217,169,0.85)', 'rgba(79,142,247,0.85)', 'rgba(244,161,75,0.85)'],
+            borderColor: '#181c27',
+            borderWidth: 3,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          cutout: '68%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: '#7b82a0',
+                font: { family: "'DM Mono'", size: 10 },
+                boxWidth: 8, boxHeight: 8,
+                padding: 10,
+                usePointStyle: true, pointStyleWidth: 8
+              }
+            },
+            tooltip: B1Report._tooltipDefaults()
+          }
+        }
+      }
+    );
+
+    // ── Table ─────────────────────────────────────────────────
+    const tbody = document.getElementById('tbl-body');
+    tbody.innerHTML = '';
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">No data returned from Service Layer</td></tr>';
+      return;
+    }
+
+    rows.slice(0, 50).forEach(row => {
+      const balance = (row.DocTotal || 0) - (row.PaidToDate || 0);
+      const isPaid  = row.DocStatus === 'C' || balance <= 0;
+      const isOpen  = row.DocStatus === 'O' && !row.PaidToDate;
+
+      // Deeplink — adjust entity and key field to match your report
+      const link = base ? `${base}/webapp/index.html#/OINV/${row.DocEntry}` : '#';
+      const dateStr = row.DocDate
+        ? new Date(row.DocDate).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' })
+        : '—';
+
+      const tr = document.createElement('tr');
+      tr.onclick = () => { if (base && row.DocEntry) window.open(link, '_blank'); };
+      tr.innerHTML = `
+        <td>
+          <div class="row-primary">${row.CardName || row.ItemCode || '—'}</div>
+          <div class="row-secondary">${row.CardCode || ''}</div>
+        </td>
+        <td class="mono muted">${row.DocNum || '—'}</td>
+        <td class="mono muted">${dateStr}</td>
+        <td>
+          <span class="pill">
+            <span class="dot ${isPaid ? 'dot-green' : isOpen ? 'dot-amber' : 'dot-blue'}"></span>
+            ${isPaid ? 'Paid' : isOpen ? 'Open' : 'Partial'}
+          </span>
+        </td>
+        <td class="r mono">${(row.DocTotal || 0).toLocaleString('da-DK')}</td>
+        <td class="r link-cell">${base && row.DocEntry ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  },
+
+  // ── Shared Chart.js style helpers ──────────────────────────
+  _tooltipDefaults(currency) {
+    return {
+      backgroundColor: '#1e2335',
+      borderColor: 'rgba(255,255,255,0.1)',
+      borderWidth: 1,
+      titleColor: '#7b82a0',
+      bodyColor: '#e8eaf2',
+      titleFont: { family: "'DM Mono'", size: 10 },
+      bodyFont: { family: "'DM Mono'", size: 12 },
+      callbacks: currency
+        ? { label: ctx => ' ' + ctx.raw.toLocaleString('da-DK') + ' ' + currency }
+        : undefined
+    };
+  },
+
+  _tickDefaults() {
+    return { color: '#7b82a0', font: { family: "'DM Mono'", size: 10 } };
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  Demo mode — loads mock data when opened directly in a browser.
+//  Replace MOCK with realistic sample data for your report type.
+//  The agent skips this block by setting __B1_AGENT_CONTROLLED__.
+// ═══════════════════════════════════════════════════════════════════
+(function demoIfStandalone() {
+  if (window.__B1_AGENT_CONTROLLED__) return;
+
+  const MOCK = {
+    rows: [
+      { DocEntry:1, DocNum:4821, CardCode:"C0042", CardName:"Novo Industri A/S",      DocDate:"2025-03-18", DocDueDate:"2025-04-18", DocTotal:84200,  PaidToDate:84200,  DocCur:"DKK", DocStatus:"C" },
+      { DocEntry:2, DocNum:4820, CardCode:"C0017", CardName:"Danfoss Group",           DocDate:"2025-03-15", DocDueDate:"2025-04-15", DocTotal:142500, PaidToDate:71250,  DocCur:"DKK", DocStatus:"O" },
+      { DocEntry:3, DocNum:4819, CardCode:"C0088", CardName:"Vestas Wind Systems",     DocDate:"2025-03-10", DocDueDate:"2025-04-10", DocTotal:67800,  PaidToDate:0,      DocCur:"DKK", DocStatus:"O" },
+      { DocEntry:4, DocNum:4818, CardCode:"C0031", CardName:"Arla Foods amba",         DocDate:"2025-03-07", DocDueDate:"2025-03-31", DocTotal:38400,  PaidToDate:38400,  DocCur:"DKK", DocStatus:"C" },
+      { DocEntry:5, DocNum:4817, CardCode:"C0055", CardName:"DSV Panalpina A/S",       DocDate:"2025-02-28", DocDueDate:"2025-03-28", DocTotal:95100,  PaidToDate:0,      DocCur:"DKK", DocStatus:"O" },
+      { DocEntry:6, DocNum:4816, CardCode:"C0017", CardName:"Danfoss Group",           DocDate:"2025-02-20", DocDueDate:"2025-03-20", DocTotal:118000, PaidToDate:118000, DocCur:"DKK", DocStatus:"C" },
+      { DocEntry:7, DocNum:4815, CardCode:"C0099", CardName:"Ørsted A/S",              DocDate:"2025-02-14", DocDueDate:"2025-03-14", DocTotal:201000, PaidToDate:201000, DocCur:"DKK", DocStatus:"C" },
+      { DocEntry:8, DocNum:4814, CardCode:"C0042", CardName:"Novo Industri A/S",       DocDate:"2025-02-05", DocDueDate:"2025-03-05", DocTotal:56700,  PaidToDate:56700,  DocCur:"DKK", DocStatus:"C" },
+    ],
+    summary: [
+      { Mo:10, Revenue:381000 }, { Mo:11, Revenue:428000 }, { Mo:12, Revenue:512000 },
+      { Mo:1,  Revenue:398000 }, { Mo:2,  Revenue:634000 }, { Mo:3,  Revenue:487000 },
+    ],
+    company:       "CRONUS_DK (demo)",
+    webClientBase: ""   // leave empty in demo so links gracefully show "—"
+  };
+
+  window.B1Report.load(MOCK);
+})();
+</script>
+</body>
+</html>

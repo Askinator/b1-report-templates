@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "updated": "2025-03-28",
+  "baseUrl": "https://sapwebclient.yourdomain.com",
+  "webClientLinks": {
+    "invoice":       "/webapp/index.html#/OINV/{DocEntry}",
+    "customer":      "/webapp/index.html#/OCRD/{CardCode}",
+    "purchaseOrder": "/webapp/index.html#/OPOR/{DocEntry}",
+    "item":          "/webapp/index.html#/OITM/{ItemCode}",
+    "payment":       "/webapp/index.html#/ORCT/{DocEntry}"
+  },
+  "reports": [
+    {
+      "id": "sales-performance",
+      "name": "Sales performance",
+      "description": "Revenue trend, top customers by volume, invoice status breakdown — rolling 6 months. Use when user asks about sales, revenue, customers, or invoices.",
+      "tags": ["sales", "revenue", "invoices", "customers"],
+      "queries": [
+        {
+          "key": "invoices",
+          "endpoint": "OINV",
+          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,PaidToDate,DocCur,DocStatus",
+          "filter": "DocDate ge '{date_6m_ago}' and Canceled eq 'N'",
+          "orderby": "DocDate desc",
+          "top": 200
+        },
+        {
+          "key": "monthly",
+          "sql": "SELECT MONTH(T0.\"DocDate\") AS Mo, YEAR(T0.\"DocDate\") AS Yr, SUM(T0.\"DocTotal\") AS Revenue FROM OINV T0 WHERE T0.\"DocDate\" >= DATEADD(MONTH,-6,GETDATE()) AND T0.\"CANCELED\"='N' GROUP BY YEAR(T0.\"DocDate\"), MONTH(T0.\"DocDate\") ORDER BY Yr, Mo"
+        }
+      ],
+      "aiHints": {
+        "kpis": ["total revenue", "invoice count", "avg invoice value", "overdue balance"],
+        "charts": ["monthly revenue bar", "payment status donut"],
+        "tables": ["top 6 customers aggregated"],
+        "warn": { "overdueBalance": 50000 },
+        "deeplinks": ["invoice by DocEntry", "customer by CardCode"]
+      }
+    },
+    {
+      "id": "ar-aging",
+      "name": "AR aging",
+      "description": "Accounts receivable split into aging buckets: current, 1-30, 31-60, 61-90, 90+ days overdue. Use when user asks about aging, collections, overdue, or cash flow.",
+      "tags": ["ar", "aging", "receivables", "overdue", "collections", "cash flow"],
+      "queries": [
+        {
+          "key": "openInvoices",
+          "endpoint": "OINV",
+          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,PaidToDate,DocCur",
+          "filter": "DocStatus eq 'O' and Canceled eq 'N'",
+          "orderby": "DocDueDate asc",
+          "top": 500
+        }
+      ],
+      "aiHints": {
+        "kpis": ["total outstanding", "current", "1-30 days", "31-60 days", "60+ days"],
+        "charts": ["aging bucket bar chart"],
+        "tables": ["all open invoices with days overdue column, sorted worst first"],
+        "warn": { "bucket_60plus": 10000 },
+        "deeplinks": ["invoice by DocEntry", "customer by CardCode"],
+        "compute": "derive aging bucket from DocDueDate vs today — do not expect it from SL"
+      }
+    },
+    {
+      "id": "inventory-levels",
+      "name": "Inventory levels",
+      "description": "Stock on hand by item and warehouse, reorder alerts for items below MinLevel, slow movers. Use when user asks about stock, inventory, warehouse, or items.",
+      "tags": ["inventory", "stock", "warehouse", "items", "reorder"],
+      "queries": [
+        {
+          "key": "stock",
+          "endpoint": "OITW",
+          "select": "ItemCode,WhsCode,OnHand,IsCommited,OnOrder",
+          "filter": "OnHand ne 0",
+          "top": 500
+        },
+        {
+          "key": "items",
+          "endpoint": "OITM",
+          "select": "ItemCode,ItemName,ItmsGrpCod,MinLevel,MaxLevel,LastPurPrc",
+          "filter": "validFor eq 'Y' and InvntItem eq 'Y'",
+          "top": 500
+        }
+      ],
+      "aiHints": {
+        "kpis": ["total SKUs", "items below reorder point", "total stock value (OnHand x LastPurPrc)", "out of stock count"],
+        "charts": ["stock level bar — top 15 items by value", "reorder alert list"],
+        "tables": ["below-minimum items highlighted in red, with OnHand / MinLevel / gap columns"],
+        "warn": { "belowMinLevel": true },
+        "deeplinks": ["item by ItemCode"]
+      }
+    },
+    {
+      "id": "purchase-spend",
+      "name": "Purchase & vendor spend",
+      "description": "PO volume and vendor spend breakdown for the last 6 months. Use when user asks about purchasing, vendors, POs, or procurement.",
+      "tags": ["purchasing", "vendors", "po", "spend", "procurement"],
+      "queries": [
+        {
+          "key": "purchaseOrders",
+          "endpoint": "OPOR",
+          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,DocCur,DocStatus",
+          "filter": "DocDate ge '{date_6m_ago}' and Canceled eq 'N'",
+          "orderby": "DocDate desc",
+          "top": 200
+        }
+      ],
+      "aiHints": {
+        "kpis": ["total spend", "PO count", "avg PO value", "unique vendors"],
+        "charts": ["spend by vendor bar — top 8", "monthly spend trend"],
+        "tables": ["top vendors aggregated with PO count and total"],
+        "deeplinks": ["purchase order by DocEntry", "vendor by CardCode"]
+      }
+    }
+  ]
+}
