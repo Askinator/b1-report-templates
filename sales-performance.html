@@ -387,11 +387,19 @@ window.B1Report = {
 
   load(data) {
     // ── Unpack ────────────────────────────────────────────────
-    const invoices = data.invoices || [];
-    const monthly  = data.monthly  || [];
-    const base     = data.webClientBase || '';
-    const links    = data.webClientLinks || {};
-    const company  = data.company || '—';
+    const invoices  = data.invoices || [];
+    const monthly   = data.monthly  || [];
+    const base      = data.webClientBase || '';
+    const deeplinks = data.deeplinks || {};
+    const company   = data.company || '—';
+
+    // Build a deeplink URL using the SAP web client URL format
+    const sapLink = (type, value) => {
+      const def = deeplinks[type];
+      if (!base || !def || !value) return '';
+      const c = def.objCode;
+      return `${base}/index.html#webclient-${c}&/Objects/${c}/Detail?view=${c}.detailView&id=${c}%252C${encodeURIComponent(value)}`;
+    };
     const currency = invoices[0]?.DocCurrency || 'DKK';
 
     // ── Header & badge ────────────────────────────────────────
@@ -565,9 +573,7 @@ window.B1Report = {
     customers.forEach(c => {
       const sharePct = Math.round((c.total / totalRevenue) * 100);
       const barWidthPct = Math.round((c.total / maxTotal) * 100);
-      const link = (base && links.customer && c.CardCode)
-        ? base + links.customer.replace('{CardCode}', c.CardCode)
-        : '';
+      const link = sapLink('customer', c.CardCode);
 
       const tr = document.createElement('tr');
       tr.onclick = () => { if (link) window.open(link, '_blank'); };
@@ -639,9 +645,9 @@ window.B1Report = {
     ],
     company:       "CRONUS_DK (demo)",
     webClientBase: "",
-    webClientLinks: {
-      customer: "/webapp/index.html#/OCRD/{CardCode}",
-      invoice:  "/webapp/index.html#/OINV/{DocEntry}"
+    deeplinks: {
+      customer: { objCode: "OCRD", key: "CardCode" },
+      invoice:  { objCode: "OINV", key: "DocEntry" }
     }
   };
 

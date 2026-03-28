@@ -1,13 +1,13 @@
 {
-  "version": 1,
+  "version": 1.1,
   "updated": "2026-03-28",
-  "baseUrl": "https://sapwebclient.yourdomain.com",
-  "webClientLinks": {
-    "invoice":       "/webapp/index.html#/OINV/{DocEntry}",
-    "customer":      "/webapp/index.html#/OCRD/{CardCode}",
-    "purchaseOrder": "/webapp/index.html#/OPOR/{DocEntry}",
-    "item":          "/webapp/index.html#/OITM/{ItemCode}",
-    "payment":       "/webapp/index.html#/ORCT/{DocEntry}"
+  "deeplinks": {
+    "invoice":       { "objCode": "OINV", "key": "DocEntry" },
+    "customer":      { "objCode": "OCRD", "key": "CardCode" },
+    "purchaseOrder": { "objCode": "OPOR", "key": "DocEntry" },
+    "item":          { "objCode": "OITM", "key": "ItemCode" },
+    "payment":       { "objCode": "ORCT", "key": "DocEntry" }
+
   },
   "reports": [
     {

@@ -368,10 +368,18 @@ window.B1Report = {
 
   load(data) {
     // ── Unpack ────────────────────────────────────────────────
-    const rows    = data.rows    || [];
-    const base    = data.webClientBase || '';
-    const links   = data.webClientLinks || {};
-    const company = data.company || '—';
+    const rows      = data.rows    || [];
+    const base      = data.webClientBase || '';
+    const deeplinks = data.deeplinks || {};
+    const company   = data.company || '—';
+
+    // Build a deeplink URL using the SAP web client URL format
+    const sapLink = (type, value) => {
+      const def = deeplinks[type];
+      if (!base || !def || !value) return '';
+      const c = def.objCode;
+      return `${base}/index.html#webclient-${c}&/Objects/${c}/Detail?view=${c}.detailView&id=${c}%252C${encodeURIComponent(value)}`;
+    };
 
     // ── Header & badge ────────────────────────────────────────
     const isDemo = !window.__B1_AGENT_CONTROLLED__;
@@ -512,10 +520,8 @@ window.B1Report = {
       const isPaid  = row.DocumentStatus === 'bost_Close' || balance <= 0;
       const isOpen  = row.DocumentStatus === 'bost_Open' && !(row.PaidToDate > 0);
 
-      // Deeplink — uses webClientLinks from manifest, adjust link key and placeholder to match your report
-      const link = (base && links.invoice && row.DocEntry)
-        ? base + links.invoice.replace('{DocEntry}', row.DocEntry)
-        : '';
+      // Deeplink — uses deeplinks from manifest via objectsDetailView endpoint
+      const link = sapLink('invoice', row.DocEntry);
       const dateStr = row.DocDate
         ? new Date(row.DocDate).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' })
         : '—';
@@ -584,8 +590,8 @@ window.B1Report = {
     ],
     company:       "CRONUS_DK (demo)",
     webClientBase: "",
-    webClientLinks: {
-      invoice: "/webapp/index.html#/OINV/{DocEntry}"
+    deeplinks: {
+      invoice: { objCode: "OINV", key: "DocEntry" }
     }
   };
 
