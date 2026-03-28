@@ -392,7 +392,7 @@ window.B1Report = {
     const base     = data.webClientBase || '';
     const links    = data.webClientLinks || {};
     const company  = data.company || '—';
-    const currency = invoices[0]?.DocCurrency || invoices[0]?.DocCur || 'DKK';
+    const currency = invoices[0]?.DocCurrency || 'DKK';
 
     // ── Header & badge ────────────────────────────────────────
     const isDemo = !window.__B1_AGENT_CONTROLLED__;
@@ -406,9 +406,8 @@ window.B1Report = {
 
     // ── KPI calculations ──────────────────────────────────────
     const totalRevenue = invoices.reduce((s, r) => s + (r.DocTotal || 0), 0);
-    const getStatus = r => r.DocumentStatus || r.DocStatus;
     const overdueBalance = invoices
-      .filter(r => getStatus(r) === 'bost_Open' || getStatus(r) === 'O')
+      .filter(r => r.DocumentStatus === 'bost_Open')
       .reduce((s, r) => s + Math.max(0, (r.DocTotal || 0) - (r.PaidToDate || 0)), 0);
 
     const fmtK = n => {
@@ -497,11 +496,9 @@ window.B1Report = {
     );
 
     // ── Donut chart — payment status ──────────────────────────
-    const isOpen   = r => getStatus(r) === 'bost_Open' || getStatus(r) === 'O';
-    const isClosed = r => getStatus(r) === 'bost_Close' || getStatus(r) === 'C';
-    const paid    = invoices.filter(r => isClosed(r)).length;
-    const partial = invoices.filter(r => isOpen(r) && r.PaidToDate > 0).length;
-    const open    = invoices.filter(r => isOpen(r) && !(r.PaidToDate > 0)).length;
+    const paid    = invoices.filter(r => r.DocumentStatus === 'bost_Close').length;
+    const partial = invoices.filter(r => r.DocumentStatus === 'bost_Open' && r.PaidToDate > 0).length;
+    const open    = invoices.filter(r => r.DocumentStatus === 'bost_Open' && !(r.PaidToDate > 0)).length;
 
     if (this._charts.donut) this._charts.donut.destroy();
     this._charts.donut = new Chart(
@@ -623,22 +620,22 @@ window.B1Report = {
 
   const MOCK = {
     invoices: [
-      { DocEntry:101, DocNum:5021, CardCode:"C0042", CardName:"Novo Industri A/S",     DocDate:"2026-03-18", DocDueDate:"2026-04-18", DocTotal:184200,  PaidToDate:184200,  DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:102, DocNum:5020, CardCode:"C0017", CardName:"Danfoss Group",          DocDate:"2026-03-15", DocDueDate:"2026-04-15", DocTotal:242500,  PaidToDate:121250,  DocCur:"DKK", DocStatus:"O" },
-      { DocEntry:103, DocNum:5019, CardCode:"C0088", CardName:"Vestas Wind Systems",    DocDate:"2026-03-10", DocDueDate:"2026-04-10", DocTotal:97800,   PaidToDate:0,       DocCur:"DKK", DocStatus:"O" },
-      { DocEntry:104, DocNum:5018, CardCode:"C0031", CardName:"Arla Foods amba",        DocDate:"2026-03-07", DocDueDate:"2026-03-31", DocTotal:68400,   PaidToDate:68400,   DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:105, DocNum:5017, CardCode:"C0055", CardName:"DSV Panalpina A/S",      DocDate:"2026-02-28", DocDueDate:"2026-03-28", DocTotal:115100,  PaidToDate:0,       DocCur:"DKK", DocStatus:"O" },
-      { DocEntry:106, DocNum:5016, CardCode:"C0017", CardName:"Danfoss Group",          DocDate:"2026-02-20", DocDueDate:"2026-03-20", DocTotal:138000,  PaidToDate:138000,  DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:107, DocNum:5015, CardCode:"C0099", CardName:"Ørsted A/S",             DocDate:"2026-02-14", DocDueDate:"2026-03-14", DocTotal:321000,  PaidToDate:321000,  DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:108, DocNum:5014, CardCode:"C0042", CardName:"Novo Industri A/S",      DocDate:"2026-02-05", DocDueDate:"2026-03-05", DocTotal:76700,   PaidToDate:76700,   DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:109, DocNum:5013, CardCode:"C0063", CardName:"Coloplast A/S",          DocDate:"2026-01-28", DocDueDate:"2026-02-28", DocTotal:59400,   PaidToDate:59400,   DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:110, DocNum:5012, CardCode:"C0055", CardName:"DSV Panalpina A/S",      DocDate:"2026-01-20", DocDueDate:"2026-02-20", DocTotal:88200,   PaidToDate:88200,   DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:111, DocNum:5011, CardCode:"C0088", CardName:"Vestas Wind Systems",    DocDate:"2025-12-18", DocDueDate:"2026-01-18", DocTotal:143500,  PaidToDate:143500,  DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:112, DocNum:5010, CardCode:"C0099", CardName:"Ørsted A/S",             DocDate:"2025-12-10", DocDueDate:"2026-01-10", DocTotal:267000,  PaidToDate:267000,  DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:113, DocNum:5009, CardCode:"C0031", CardName:"Arla Foods amba",        DocDate:"2025-11-25", DocDueDate:"2025-12-25", DocTotal:52100,   PaidToDate:52100,   DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:114, DocNum:5008, CardCode:"C0063", CardName:"Coloplast A/S",          DocDate:"2025-11-12", DocDueDate:"2025-12-12", DocTotal:74800,   PaidToDate:74800,   DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:115, DocNum:5007, CardCode:"C0042", CardName:"Novo Industri A/S",      DocDate:"2025-10-30", DocDueDate:"2025-11-30", DocTotal:198600,  PaidToDate:198600,  DocCur:"DKK", DocStatus:"C" },
-      { DocEntry:116, DocNum:5006, CardCode:"C0017", CardName:"Danfoss Group",          DocDate:"2025-10-15", DocDueDate:"2025-11-15", DocTotal:162300,  PaidToDate:162300,  DocCur:"DKK", DocStatus:"C" },
+      { DocEntry:101, DocNum:5021, CardCode:"C0042", CardName:"Novo Industri A/S",     DocDate:"2026-03-18", DocDueDate:"2026-04-18", DocTotal:184200,  PaidToDate:184200,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:102, DocNum:5020, CardCode:"C0017", CardName:"Danfoss Group",          DocDate:"2026-03-15", DocDueDate:"2026-04-15", DocTotal:242500,  PaidToDate:121250,  DocCurrency:"DKK", DocumentStatus:"bost_Open",  Cancelled:"tNO" },
+      { DocEntry:103, DocNum:5019, CardCode:"C0088", CardName:"Vestas Wind Systems",    DocDate:"2026-03-10", DocDueDate:"2026-04-10", DocTotal:97800,   PaidToDate:0,       DocCurrency:"DKK", DocumentStatus:"bost_Open",  Cancelled:"tNO" },
+      { DocEntry:104, DocNum:5018, CardCode:"C0031", CardName:"Arla Foods amba",        DocDate:"2026-03-07", DocDueDate:"2026-03-31", DocTotal:68400,   PaidToDate:68400,   DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:105, DocNum:5017, CardCode:"C0055", CardName:"DSV Panalpina A/S",      DocDate:"2026-02-28", DocDueDate:"2026-03-28", DocTotal:115100,  PaidToDate:0,       DocCurrency:"DKK", DocumentStatus:"bost_Open",  Cancelled:"tNO" },
+      { DocEntry:106, DocNum:5016, CardCode:"C0017", CardName:"Danfoss Group",          DocDate:"2026-02-20", DocDueDate:"2026-03-20", DocTotal:138000,  PaidToDate:138000,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:107, DocNum:5015, CardCode:"C0099", CardName:"Ørsted A/S",             DocDate:"2026-02-14", DocDueDate:"2026-03-14", DocTotal:321000,  PaidToDate:321000,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:108, DocNum:5014, CardCode:"C0042", CardName:"Novo Industri A/S",      DocDate:"2026-02-05", DocDueDate:"2026-03-05", DocTotal:76700,   PaidToDate:76700,   DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:109, DocNum:5013, CardCode:"C0063", CardName:"Coloplast A/S",          DocDate:"2026-01-28", DocDueDate:"2026-02-28", DocTotal:59400,   PaidToDate:59400,   DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:110, DocNum:5012, CardCode:"C0055", CardName:"DSV Panalpina A/S",      DocDate:"2026-01-20", DocDueDate:"2026-02-20", DocTotal:88200,   PaidToDate:88200,   DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:111, DocNum:5011, CardCode:"C0088", CardName:"Vestas Wind Systems",    DocDate:"2025-12-18", DocDueDate:"2026-01-18", DocTotal:143500,  PaidToDate:143500,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:112, DocNum:5010, CardCode:"C0099", CardName:"Ørsted A/S",             DocDate:"2025-12-10", DocDueDate:"2026-01-10", DocTotal:267000,  PaidToDate:267000,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:113, DocNum:5009, CardCode:"C0031", CardName:"Arla Foods amba",        DocDate:"2025-11-25", DocDueDate:"2025-12-25", DocTotal:52100,   PaidToDate:52100,   DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:114, DocNum:5008, CardCode:"C0063", CardName:"Coloplast A/S",          DocDate:"2025-11-12", DocDueDate:"2025-12-12", DocTotal:74800,   PaidToDate:74800,   DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:115, DocNum:5007, CardCode:"C0042", CardName:"Novo Industri A/S",      DocDate:"2025-10-30", DocDueDate:"2025-11-30", DocTotal:198600,  PaidToDate:198600,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+      { DocEntry:116, DocNum:5006, CardCode:"C0017", CardName:"Danfoss Group",          DocDate:"2025-10-15", DocDueDate:"2025-11-15", DocTotal:162300,  PaidToDate:162300,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
     ],
     company:       "CRONUS_DK (demo)",
     webClientBase: "",
