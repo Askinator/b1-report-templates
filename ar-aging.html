@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sales performance · B1 Report</title>
+<title>AR Aging · B1 Report</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
@@ -163,14 +163,14 @@ body {
   display: none;
   align-items: center;
   gap: 8px;
-  background: rgba(217,119,6,0.07);
-  border: 1px solid rgba(217,119,6,0.2);
+  background: rgba(220,38,38,0.06);
+  border: 1px solid rgba(220,38,38,0.2);
   border-radius: 6px;
   padding: 8px 12px;
   margin-bottom: 12px;
   font-family: var(--mono);
   font-size: 11px;
-  color: var(--amber);
+  color: var(--red);
 }
 .warning-banner.visible { display: flex; }
 
@@ -219,23 +219,23 @@ tbody td.muted { color: var(--muted); }
 .row-primary   { font-weight: 500; color: var(--text); }
 .row-secondary { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 1px; }
 
-.bar-wrap {
-  display: flex;
+.pill {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
 }
-.bar-track {
-  flex: 1;
-  height: 4px;
-  background: rgba(0,0,0,0.07);
-  border-radius: 2px;
-  overflow: hidden;
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
-.bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: var(--blue);
-}
+.dot-green { background: var(--green); }
+.dot-amber { background: var(--amber); }
+.dot-red   { background: var(--red); }
+.dot-blue  { background: var(--blue); }
 
 .link-cell a {
   color: var(--blue);
@@ -282,7 +282,7 @@ tbody td.muted { color: var(--muted); }
 <!-- ── Header ── -->
 <div class="header">
   <div class="header-left">
-    <h1 id="rpt-title">Sales performance</h1>
+    <h1 id="rpt-title">AR Aging</h1>
     <div class="meta" id="rpt-meta">Waiting for data…</div>
   </div>
   <div class="header-right">
@@ -294,68 +294,71 @@ tbody td.muted { color: var(--muted); }
 <!-- ── KPI row ── -->
 <div class="kpi-row">
   <div class="kpi kpi-blue">
-    <div class="kpi-label">Total Revenue</div>
+    <div class="kpi-label">Total AR Outstanding</div>
     <div class="kpi-value" id="kpi-1">—</div>
     <div class="kpi-delta" id="kpi-1-d"></div>
   </div>
-  <div class="kpi kpi-green">
-    <div class="kpi-label">Invoices</div>
+  <div class="kpi kpi-amber">
+    <div class="kpi-label">Open Invoices</div>
     <div class="kpi-value" id="kpi-2">—</div>
     <div class="kpi-delta" id="kpi-2-d"></div>
   </div>
-  <div class="kpi kpi-amber">
-    <div class="kpi-label">Avg Invoice</div>
+  <div class="kpi kpi-red">
+    <div class="kpi-label">60+ Days Overdue</div>
     <div class="kpi-value" id="kpi-3">—</div>
     <div class="kpi-delta" id="kpi-3-d"></div>
   </div>
   <div class="kpi kpi-red">
-    <div class="kpi-label">Overdue Balance</div>
+    <div class="kpi-label">Largest Overdue</div>
     <div class="kpi-value" id="kpi-4">—</div>
     <div class="kpi-delta" id="kpi-4-d"></div>
   </div>
+</div>
+
+<!-- ── Warning banner ── -->
+<div class="warning-banner" id="warning-60plus">
+  ⚠ 60+ days overdue balance exceeds threshold — escalate collections
 </div>
 
 <!-- ── Charts ── -->
 <div class="chart-row">
   <div class="card">
     <div class="card-header">
-      <span class="card-title">Monthly Revenue</span>
-      <span class="card-hint">OINV."DocTotal" · rolling 6 months</span>
+      <span class="card-title">Aging Buckets</span>
+      <span class="card-hint">OINV."DocDueDate" vs today · outstanding balance</span>
     </div>
-    <canvas id="chart-main" height="140"></canvas>
+    <canvas id="chart-aging" height="140"></canvas>
   </div>
   <div class="card">
     <div class="card-header">
-      <span class="card-title">Payment Status</span>
-      <span class="card-hint">by invoice count</span>
+      <span class="card-title">Top Debtors</span>
+      <span class="card-hint">by outstanding balance · top 6</span>
     </div>
-    <canvas id="chart-donut" height="140"></canvas>
+    <canvas id="chart-debtors" height="140"></canvas>
   </div>
 </div>
 
-<!-- ── Warning banner ── -->
-<div class="warning-banner" id="warning-overdue">
-  ⚠ Overdue balance exceeds threshold — review collections
-</div>
-
-<!-- ── Top Customers table ── -->
+<!-- ── Open Invoices table ── -->
 <div class="card">
   <div class="card-header">
-    <span class="card-title">Top Customers</span>
-    <span class="card-hint">OCRD · aggregated by revenue · top 6</span>
+    <span class="card-title">Open Invoices</span>
+    <span class="card-hint">OINV · sorted by days overdue descending</span>
   </div>
   <table>
     <thead>
       <tr>
         <th>Customer</th>
-        <th class="r">Invoices</th>
-        <th class="r">Total Revenue</th>
-        <th class="r">Share</th>
+        <th>Invoice #</th>
+        <th>Invoice Date</th>
+        <th>Due Date</th>
+        <th class="r">Days Overdue</th>
+        <th>Bucket</th>
+        <th class="r">Outstanding</th>
         <th class="r">Open in SAP</th>
       </tr>
     </thead>
     <tbody id="tbl-body">
-      <tr><td colspan="5" class="empty">Waiting for data…</td></tr>
+      <tr><td colspan="8" class="empty">Waiting for data…</td></tr>
     </tbody>
   </table>
 </div>
@@ -369,30 +372,28 @@ tbody td.muted { color: var(--muted); }
 <script>
 // ═══════════════════════════════════════════════════════════════════
 //  B1Report contract
-//  The agent sets window.__B1_AGENT_CONTROLLED__ = true before
-//  calling load(). Templates must not break if load() is called
-//  more than once (e.g. on refresh).
 // ═══════════════════════════════════════════════════════════════════
 window.B1Report = {
 
   meta: {
-    id:          "sales-performance",
-    name:        "Sales performance",
-    description: "Revenue trend, top customers by volume, invoice status breakdown — rolling 6 months. Use when user asks about sales, revenue, customers, or invoices.",
-    tags:        ["sales", "revenue", "invoices", "customers"],
-    queries:     ["invoices"]
+    id:          "ar-aging",
+    name:        "AR aging",
+    description: "Accounts receivable split into aging buckets: current, 1-30, 31-60, 61-90, 90+ days overdue. Use when user asks about aging, collections, overdue, or cash flow.",
+    tags:        ["ar", "aging", "receivables", "overdue", "collections", "cash flow"],
+    queries:     ["openInvoices"]
   },
 
   _charts: {},
 
   load(data) {
     // ── Unpack ────────────────────────────────────────────────
-    const invoices = data.invoices || [];
-    const monthly  = data.monthly  || [];
-    const base     = data.webClientBase || '';
-    const links    = data.webClientLinks || {};
-    const company  = data.company || '—';
-    const currency = invoices[0]?.DocCurrency || 'DKK';
+    const openInvoices = data.openInvoices || [];
+    const base         = data.webClientBase || '';
+    const links        = data.webClientLinks || {};
+    const company      = data.company || '—';
+    const currency     = openInvoices[0]?.DocCurrency || 'DKK';
+    const today        = new Date();
+    today.setHours(0, 0, 0, 0);
 
     // ── Header & badge ────────────────────────────────────────
     const isDemo = !window.__B1_AGENT_CONTROLLED__;
@@ -400,26 +401,50 @@ window.B1Report = {
     document.getElementById('rpt-badge').textContent   = isDemo ? '● Demo' : '● Live';
     document.getElementById('rpt-badge').className     = 'badge ' + (isDemo ? 'badge-demo' : 'badge-live');
     document.getElementById('rpt-meta').textContent    =
-      `${invoices.length} invoices · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
+      `${openInvoices.length} open invoices · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
     document.getElementById('rpt-ts').textContent =
       'Generated: ' + new Date().toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' });
 
-    // ── KPI calculations ──────────────────────────────────────
-    const totalRevenue = invoices.reduce((s, r) => s + (r.DocTotal || 0), 0);
-    const overdueBalance = invoices
-      .filter(r => r.DocumentStatus === 'bost_Open')
-      .reduce((s, r) => s + Math.max(0, (r.DocTotal || 0) - (r.PaidToDate || 0)), 0);
-
+    // ── Helpers ───────────────────────────────────────────────
     const fmtK = n => {
       if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
       if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
       return n.toLocaleString('da-DK');
     };
 
-    document.getElementById('kpi-1').textContent = fmtK(totalRevenue);
-    document.getElementById('kpi-2').textContent = invoices.length;
-    document.getElementById('kpi-3').textContent = invoices.length ? fmtK(Math.round(totalRevenue / invoices.length)) : '—';
-    document.getElementById('kpi-4').textContent = fmtK(overdueBalance);
+    const outstanding = r => Math.max(0, (r.DocTotal || 0) - (r.PaidToDate || 0));
+
+    const ageBucket = dueDateStr => {
+      if (!dueDateStr) return { label: 'Current', key: 'current', days: 0 };
+      const [y, m, d] = dueDateStr.split('-').map(Number);
+      const due = new Date(y, m - 1, d); // local midnight — avoids UTC parse shift
+      const days = Math.floor((today - due) / 86400000);
+      if (days <= 0)  return { label: 'Current',   key: 'current', days };
+      if (days <= 30) return { label: '1–30 days', key: 'b30',     days };
+      if (days <= 60) return { label: '31–60 days',key: 'b60',     days };
+      if (days <= 90) return { label: '61–90 days',key: 'b90',     days };
+      return                 { label: '90+ days',  key: 'b90plus', days };
+    };
+
+    // ── Enrich invoices with bucket + outstanding ──────────────
+    const enriched = openInvoices.map(r => {
+      const bucket = ageBucket(r.DocDueDate);
+      return { ...r, _outstanding: outstanding(r), _bucket: bucket };
+    });
+
+    // ── KPI calculations ──────────────────────────────────────
+    const totalAR    = enriched.reduce((s, r) => s + r._outstanding, 0);
+    const bucket60plus = enriched
+      .filter(r => r._bucket.key === 'b90' || r._bucket.key === 'b90plus')
+      .reduce((s, r) => s + r._outstanding, 0);
+    const largestOverdue = enriched
+      .filter(r => r._bucket.days > 0)
+      .reduce((max, r) => Math.max(max, r._outstanding), 0);
+
+    document.getElementById('kpi-1').textContent = fmtK(totalAR);
+    document.getElementById('kpi-2').textContent = openInvoices.length;
+    document.getElementById('kpi-3').textContent = fmtK(bucket60plus);
+    document.getElementById('kpi-4').textContent = fmtK(largestOverdue);
 
     const setDelta = (id, text, cls) => {
       const el = document.getElementById(id);
@@ -427,56 +452,50 @@ window.B1Report = {
       el.className = 'kpi-delta ' + (cls || '');
     };
     setDelta('kpi-1-d', currency);
-    setDelta('kpi-2-d', 'rolling 6 months');
-    setDelta('kpi-3-d', currency);
-    setDelta('kpi-4-d',
-      overdueBalance > 0 ? '↑ Action required' : '✓ All clear',
-      overdueBalance > 0 ? 'down' : 'up'
-    );
+    setDelta('kpi-2-d', 'all open, unpaid');
+    setDelta('kpi-3-d', bucket60plus > 0 ? '↑ Escalate now' : '✓ None critical', bucket60plus > 0 ? 'down' : 'up');
+    setDelta('kpi-4-d', currency);
 
-    // ── Overdue warning ───────────────────────────────────────
-    const warningEl = document.getElementById('warning-overdue');
-    if (overdueBalance > 50000) {
-      warningEl.textContent = `⚠ Overdue balance ${fmtK(overdueBalance)} ${currency} exceeds threshold — review collections`;
+    // ── Warning banner ────────────────────────────────────────
+    const warningEl = document.getElementById('warning-60plus');
+    if (bucket60plus > 10000) {
+      warningEl.textContent = `⚠ 60+ days overdue balance ${fmtK(bucket60plus)} ${currency} exceeds threshold — escalate collections`;
       warningEl.classList.add('visible');
     } else {
       warningEl.classList.remove('visible');
     }
 
-    // ── Bar chart — monthly revenue ───────────────────────────
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    let barData;
-    if (monthly.length) {
-      barData = monthly.map(s => ({ label: monthNames[(s.Mo || 1) - 1], value: s.Revenue || 0 }));
-    } else {
-      const acc = {};
-      invoices.forEach(r => {
-        const d = new Date(r.DocDate || Date.now());
-        const k = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}`;
-        if (!acc[k]) acc[k] = { label: monthNames[d.getMonth()], value: 0, sort: k };
-        acc[k].value += r.DocTotal || 0;
-      });
-      barData = Object.values(acc).sort((a, b) => a.sort.localeCompare(b.sort)).slice(-6);
-    }
+    // ── Aging bucket bar chart ────────────────────────────────
+    const bucketKeys   = ['current', 'b30', 'b60', 'b90', 'b90plus'];
+    const bucketLabels = ['Current', '1–30 days', '31–60 days', '61–90 days', '90+ days'];
+    const bucketColors = [
+      'rgba(5,150,105,0.80)',
+      'rgba(37,99,235,0.80)',
+      'rgba(217,119,6,0.80)',
+      'rgba(217,119,6,0.80)',
+      'rgba(220,38,38,0.80)'
+    ];
+    const bucketAmounts = bucketKeys.map(k =>
+      enriched.filter(r => r._bucket.key === k).reduce((s, r) => s + r._outstanding, 0)
+    );
 
-    if (this._charts.main) this._charts.main.destroy();
-    this._charts.main = new Chart(
-      document.getElementById('chart-main').getContext('2d'),
+    if (this._charts.aging) this._charts.aging.destroy();
+    this._charts.aging = new Chart(
+      document.getElementById('chart-aging').getContext('2d'),
       {
         type: 'bar',
         data: {
-          labels: barData.map(d => d.label),
+          labels: bucketLabels,
           datasets: [{
-            data: barData.map(d => d.value),
-            backgroundColor: barData.map((_, i) =>
-              i === barData.length - 1 ? 'rgba(37,99,235,0.85)' : 'rgba(37,99,235,0.22)'),
-            borderColor: barData.map((_, i) =>
-              i === barData.length - 1 ? 'rgba(37,99,235,1)' : 'rgba(37,99,235,0.45)'),
+            data: bucketAmounts,
+            backgroundColor: bucketColors,
+            borderColor: bucketColors.map(c => c.replace('0.80', '1')),
             borderWidth: 1,
             borderRadius: 3
           }]
         },
         options: {
+          indexAxis: 'y',
           responsive: true,
           maintainAspectRatio: true,
           plugins: {
@@ -484,107 +503,115 @@ window.B1Report = {
             tooltip: B1Report._tooltipDefaults(currency)
           },
           scales: {
-            x: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } },
-            y: {
+            x: {
               grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false },
               border: { display: false, dash: [3, 3] },
               ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 4 }
-            }
-          }
-        }
-      }
-    );
-
-    // ── Donut chart — payment status ──────────────────────────
-    const paid    = invoices.filter(r => r.DocumentStatus === 'bost_Close').length;
-    const partial = invoices.filter(r => r.DocumentStatus === 'bost_Open' && r.PaidToDate > 0).length;
-    const open    = invoices.filter(r => r.DocumentStatus === 'bost_Open' && !(r.PaidToDate > 0)).length;
-
-    if (this._charts.donut) this._charts.donut.destroy();
-    this._charts.donut = new Chart(
-      document.getElementById('chart-donut').getContext('2d'),
-      {
-        type: 'doughnut',
-        data: {
-          labels: ['Paid', 'Partial', 'Open'],
-          datasets: [{
-            data: [paid, partial, open],
-            backgroundColor: ['rgba(5,150,105,0.85)', 'rgba(37,99,235,0.85)', 'rgba(217,119,6,0.85)'],
-            borderColor: '#ffffff',
-            borderWidth: 3,
-            hoverOffset: 4
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          cutout: '68%',
-          plugins: {
-            legend: {
-              position: 'bottom',
-              labels: {
-                color: '#6b7280',
-                font: { family: "'DM Mono'", size: 10 },
-                boxWidth: 8, boxHeight: 8,
-                padding: 10,
-                usePointStyle: true, pointStyleWidth: 8
-              }
             },
-            tooltip: B1Report._tooltipDefaults()
+            y: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } }
           }
         }
       }
     );
 
-    // ── Top customers table ───────────────────────────────────
-    const tbody = document.getElementById('tbl-body');
-    tbody.innerHTML = '';
-
-    if (!invoices.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty">No data returned from Service Layer</td></tr>';
-      return;
-    }
-
-    // Aggregate by customer
-    const customerMap = {};
-    invoices.forEach(r => {
+    // ── Top debtors bar chart ─────────────────────────────────
+    const debtorMap = {};
+    enriched.forEach(r => {
       const key = r.CardCode || '—';
-      if (!customerMap[key]) {
-        customerMap[key] = { CardCode: r.CardCode, CardName: r.CardName || key, count: 0, total: 0 };
-      }
-      customerMap[key].count++;
-      customerMap[key].total += r.DocTotal || 0;
+      if (!debtorMap[key]) debtorMap[key] = { name: r.CardName || key, total: 0 };
+      debtorMap[key].total += r._outstanding;
     });
-
-    const customers = Object.values(customerMap)
+    const topDebtors = Object.values(debtorMap)
       .sort((a, b) => b.total - a.total)
       .slice(0, 6);
 
-    const maxTotal = customers[0]?.total || 1;
+    if (this._charts.debtors) this._charts.debtors.destroy();
+    this._charts.debtors = new Chart(
+      document.getElementById('chart-debtors').getContext('2d'),
+      {
+        type: 'bar',
+        data: {
+          labels: topDebtors.map(d => d.name.length > 18 ? d.name.slice(0, 17) + '…' : d.name),
+          datasets: [{
+            data: topDebtors.map(d => d.total),
+            backgroundColor: 'rgba(37,99,235,0.75)',
+            borderColor: 'rgba(37,99,235,1)',
+            borderWidth: 1,
+            borderRadius: 3
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: B1Report._tooltipDefaults(currency)
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false },
+              border: { display: false, dash: [3, 3] },
+              ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 3 }
+            },
+            y: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } }
+          }
+        }
+      }
+    );
 
-    customers.forEach(c => {
-      const sharePct = Math.round((c.total / totalRevenue) * 100);
-      const barWidthPct = Math.round((c.total / maxTotal) * 100);
-      const link = (base && links.customer && c.CardCode)
-        ? base + links.customer.replace('{CardCode}', c.CardCode)
-        : '';
+    // ── Open invoices table ───────────────────────────────────
+    const tbody = document.getElementById('tbl-body');
+    tbody.innerHTML = '';
+
+    if (!enriched.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">No open invoices — AR is clear</td></tr>';
+      return;
+    }
+
+    const bucketDotClass = key => {
+      if (key === 'current') return 'dot-green';
+      if (key === 'b30')     return 'dot-blue';
+      return 'dot-red';
+    };
+
+    const sorted = [...enriched].sort((a, b) => b._bucket.days - a._bucket.days);
+
+    sorted.forEach(r => {
+      const invoiceLink = (base && links.invoice && r.DocEntry)
+        ? base + links.invoice.replace('{DocEntry}', r.DocEntry) : '';
+      const customerLink = (base && links.customer && r.CardCode)
+        ? base + links.customer.replace('{CardCode}', r.CardCode) : '';
+
+      const fmtDate = s => s
+        ? new Date(s).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' })
+        : '—';
+
+      const daysLabel = r._bucket.days > 0
+        ? `<span style="color:var(--red);font-weight:500">${r._bucket.days}</span>`
+        : `<span style="color:var(--green)">—</span>`;
 
       const tr = document.createElement('tr');
-      tr.onclick = () => { if (link) window.open(link, '_blank'); };
+      tr.onclick = () => { if (invoiceLink) window.open(invoiceLink, '_blank'); };
       tr.innerHTML = `
         <td>
-          <div class="row-primary">${c.CardName}</div>
-          <div class="row-secondary">${c.CardCode || ''}</div>
+          <div class="row-primary">${r.CardName || '—'}</div>
+          <div class="row-secondary">${r.CardCode || ''}</div>
         </td>
-        <td class="r mono muted">${c.count}</td>
-        <td class="r mono">
-          <div class="bar-wrap">
-            <div class="bar-track"><div class="bar-fill" style="width:${barWidthPct}%"></div></div>
-            ${c.total.toLocaleString('da-DK')}
-          </div>
+        <td class="mono muted">${r.DocNum || '—'}</td>
+        <td class="mono muted">${fmtDate(r.DocDate)}</td>
+        <td class="mono muted">${fmtDate(r.DocDueDate)}</td>
+        <td class="r mono">${daysLabel}</td>
+        <td>
+          <span class="pill">
+            <span class="dot ${bucketDotClass(r._bucket.key)}"></span>
+            ${r._bucket.label}
+          </span>
         </td>
-        <td class="r mono muted">${sharePct}%</td>
-        <td class="r link-cell">${link ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
+        <td class="r mono">${r._outstanding.toLocaleString('da-DK')}</td>
+        <td class="r link-cell">${invoiceLink
+          ? `<a href="${invoiceLink}" target="_blank">Open →</a>`
+          : '<span style="color:var(--border)">—</span>'}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -612,36 +639,38 @@ window.B1Report = {
 };
 
 // ═══════════════════════════════════════════════════════════════════
-//  Demo mode — loads mock data when opened directly in a browser.
-//  The agent skips this block by setting __B1_AGENT_CONTROLLED__.
+//  Demo mode
 // ═══════════════════════════════════════════════════════════════════
 (function demoIfStandalone() {
   if (window.__B1_AGENT_CONTROLLED__) return;
 
+  // Dates relative to 2026-03-28 (today) to hit all buckets
   const MOCK = {
-    invoices: [
-      { DocEntry:101, DocNum:5021, CardCode:"C0042", CardName:"Novo Industri A/S",     DocDate:"2026-03-18", DocDueDate:"2026-04-18", DocTotal:184200,  PaidToDate:184200,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:102, DocNum:5020, CardCode:"C0017", CardName:"Danfoss Group",          DocDate:"2026-03-15", DocDueDate:"2026-04-15", DocTotal:242500,  PaidToDate:121250,  DocCurrency:"DKK", DocumentStatus:"bost_Open",  Cancelled:"tNO" },
-      { DocEntry:103, DocNum:5019, CardCode:"C0088", CardName:"Vestas Wind Systems",    DocDate:"2026-03-10", DocDueDate:"2026-04-10", DocTotal:97800,   PaidToDate:0,       DocCurrency:"DKK", DocumentStatus:"bost_Open",  Cancelled:"tNO" },
-      { DocEntry:104, DocNum:5018, CardCode:"C0031", CardName:"Arla Foods amba",        DocDate:"2026-03-07", DocDueDate:"2026-03-31", DocTotal:68400,   PaidToDate:68400,   DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:105, DocNum:5017, CardCode:"C0055", CardName:"DSV Panalpina A/S",      DocDate:"2026-02-28", DocDueDate:"2026-03-28", DocTotal:115100,  PaidToDate:0,       DocCurrency:"DKK", DocumentStatus:"bost_Open",  Cancelled:"tNO" },
-      { DocEntry:106, DocNum:5016, CardCode:"C0017", CardName:"Danfoss Group",          DocDate:"2026-02-20", DocDueDate:"2026-03-20", DocTotal:138000,  PaidToDate:138000,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:107, DocNum:5015, CardCode:"C0099", CardName:"Ørsted A/S",             DocDate:"2026-02-14", DocDueDate:"2026-03-14", DocTotal:321000,  PaidToDate:321000,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:108, DocNum:5014, CardCode:"C0042", CardName:"Novo Industri A/S",      DocDate:"2026-02-05", DocDueDate:"2026-03-05", DocTotal:76700,   PaidToDate:76700,   DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:109, DocNum:5013, CardCode:"C0063", CardName:"Coloplast A/S",          DocDate:"2026-01-28", DocDueDate:"2026-02-28", DocTotal:59400,   PaidToDate:59400,   DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:110, DocNum:5012, CardCode:"C0055", CardName:"DSV Panalpina A/S",      DocDate:"2026-01-20", DocDueDate:"2026-02-20", DocTotal:88200,   PaidToDate:88200,   DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:111, DocNum:5011, CardCode:"C0088", CardName:"Vestas Wind Systems",    DocDate:"2025-12-18", DocDueDate:"2026-01-18", DocTotal:143500,  PaidToDate:143500,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:112, DocNum:5010, CardCode:"C0099", CardName:"Ørsted A/S",             DocDate:"2025-12-10", DocDueDate:"2026-01-10", DocTotal:267000,  PaidToDate:267000,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:113, DocNum:5009, CardCode:"C0031", CardName:"Arla Foods amba",        DocDate:"2025-11-25", DocDueDate:"2025-12-25", DocTotal:52100,   PaidToDate:52100,   DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:114, DocNum:5008, CardCode:"C0063", CardName:"Coloplast A/S",          DocDate:"2025-11-12", DocDueDate:"2025-12-12", DocTotal:74800,   PaidToDate:74800,   DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:115, DocNum:5007, CardCode:"C0042", CardName:"Novo Industri A/S",      DocDate:"2025-10-30", DocDueDate:"2025-11-30", DocTotal:198600,  PaidToDate:198600,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:116, DocNum:5006, CardCode:"C0017", CardName:"Danfoss Group",          DocDate:"2025-10-15", DocDueDate:"2025-11-15", DocTotal:162300,  PaidToDate:162300,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+    openInvoices: [
+      // Current (not yet due)
+      { DocEntry:201, DocNum:6001, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2026-03-10", DocDueDate:"2026-04-10", DocTotal:184200, PaidToDate:0,      DocCurrency:"DKK" },
+      { DocEntry:202, DocNum:6002, CardCode:"C0099", CardName:"Ørsted A/S",          DocDate:"2026-03-15", DocDueDate:"2026-04-15", DocTotal:96500,  PaidToDate:0,      DocCurrency:"DKK" },
+      { DocEntry:203, DocNum:6003, CardCode:"C0017", CardName:"Danfoss Group",       DocDate:"2026-03-20", DocDueDate:"2026-04-05", DocTotal:52000,  PaidToDate:0,      DocCurrency:"DKK" },
+      // 1–30 days overdue
+      { DocEntry:204, DocNum:5980, CardCode:"C0055", CardName:"DSV Panalpina A/S",   DocDate:"2026-02-01", DocDueDate:"2026-03-10", DocTotal:115100, PaidToDate:0,      DocCurrency:"DKK" },
+      { DocEntry:205, DocNum:5975, CardCode:"C0088", CardName:"Vestas Wind Systems", DocDate:"2026-01-28", DocDueDate:"2026-03-01", DocTotal:78400,  PaidToDate:20000,  DocCurrency:"DKK" },
+      { DocEntry:206, DocNum:5970, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2026-02-10", DocDueDate:"2026-03-15", DocTotal:43200,  PaidToDate:0,      DocCurrency:"DKK" },
+      // 31–60 days overdue
+      { DocEntry:207, DocNum:5950, CardCode:"C0031", CardName:"Arla Foods amba",     DocDate:"2026-01-10", DocDueDate:"2026-02-10", DocTotal:132000, PaidToDate:66000,  DocCurrency:"DKK" },
+      { DocEntry:208, DocNum:5945, CardCode:"C0063", CardName:"Coloplast A/S",       DocDate:"2026-01-05", DocDueDate:"2026-02-20", DocTotal:67800,  PaidToDate:0,      DocCurrency:"DKK" },
+      // 61–90 days overdue
+      { DocEntry:209, DocNum:5920, CardCode:"C0017", CardName:"Danfoss Group",       DocDate:"2025-12-15", DocDueDate:"2026-01-15", DocTotal:215000, PaidToDate:0,      DocCurrency:"DKK" },
+      { DocEntry:210, DocNum:5910, CardCode:"C0099", CardName:"Ørsted A/S",          DocDate:"2025-12-20", DocDueDate:"2026-01-20", DocTotal:88000,  PaidToDate:0,      DocCurrency:"DKK" },
+      // 90+ days overdue
+      { DocEntry:211, DocNum:5880, CardCode:"C0055", CardName:"DSV Panalpina A/S",   DocDate:"2025-11-01", DocDueDate:"2025-12-01", DocTotal:321000, PaidToDate:100000, DocCurrency:"DKK" },
+      { DocEntry:212, DocNum:5860, CardCode:"C0088", CardName:"Vestas Wind Systems", DocDate:"2025-10-15", DocDueDate:"2025-11-15", DocTotal:147500, PaidToDate:0,      DocCurrency:"DKK" },
+      { DocEntry:213, DocNum:5840, CardCode:"C0031", CardName:"Arla Foods amba",     DocDate:"2025-10-01", DocDueDate:"2025-11-01", DocTotal:59200,  PaidToDate:0,      DocCurrency:"DKK" },
     ],
     company:       "CRONUS_DK (demo)",
     webClientBase: "",
     webClientLinks: {
-      customer: "/webapp/index.html#/OCRD/{CardCode}",
-      invoice:  "/webapp/index.html#/OINV/{DocEntry}"
+      invoice:  "/webapp/index.html#/OINV/{DocEntry}",
+      customer: "/webapp/index.html#/OCRD/{CardCode}"
     }
   };
 

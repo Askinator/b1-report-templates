@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2025-03-28",
+  "updated": "2026-03-28",
   "baseUrl": "https://sapwebclient.yourdomain.com",
   "webClientLinks": {
     "invoice":       "/webapp/index.html#/OINV/{DocEntry}",

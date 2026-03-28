@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>B1 Report</title>
+<title>Purchase &amp; Vendor Spend · B1 Report</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
@@ -158,10 +158,10 @@ body {
   color: var(--muted);
 }
 
-/* ── Two-column chart row ────────────────────────────────────── */
+/* ── Two-column chart row (equal split) ──────────────────────── */
 .chart-row {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-bottom: 12px;
 }
@@ -203,23 +203,23 @@ tbody td.muted { color: var(--muted); }
 .row-primary   { font-weight: 500; color: var(--text); }
 .row-secondary { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 1px; }
 
-.pill {
-  display: inline-flex;
+.bar-wrap {
+  display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  color: var(--muted);
+  gap: 8px;
 }
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
+.bar-track {
+  flex: 1;
+  height: 4px;
+  background: rgba(0,0,0,0.07);
+  border-radius: 2px;
+  overflow: hidden;
 }
-.dot-green { background: var(--green); }
-.dot-amber { background: var(--amber); }
-.dot-red   { background: var(--red); }
-.dot-blue  { background: var(--blue); }
+.bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--blue);
+}
 
 .link-cell a {
   color: var(--blue);
@@ -266,7 +266,7 @@ tbody td.muted { color: var(--muted); }
 <!-- ── Header ── -->
 <div class="header">
   <div class="header-left">
-    <h1 id="rpt-title">Report title</h1>
+    <h1 id="rpt-title">Purchase &amp; Vendor Spend</h1>
     <div class="meta" id="rpt-meta">Waiting for data…</div>
   </div>
   <div class="header-right">
@@ -278,22 +278,22 @@ tbody td.muted { color: var(--muted); }
 <!-- ── KPI row ── -->
 <div class="kpi-row">
   <div class="kpi kpi-blue">
-    <div class="kpi-label">KPI one</div>
+    <div class="kpi-label">Total Spend</div>
     <div class="kpi-value" id="kpi-1">—</div>
     <div class="kpi-delta" id="kpi-1-d"></div>
   </div>
   <div class="kpi kpi-green">
-    <div class="kpi-label">KPI two</div>
+    <div class="kpi-label">Purchase Orders</div>
     <div class="kpi-value" id="kpi-2">—</div>
     <div class="kpi-delta" id="kpi-2-d"></div>
   </div>
   <div class="kpi kpi-amber">
-    <div class="kpi-label">KPI three</div>
+    <div class="kpi-label">Avg PO Value</div>
     <div class="kpi-value" id="kpi-3">—</div>
     <div class="kpi-delta" id="kpi-3-d"></div>
   </div>
-  <div class="kpi kpi-red">
-    <div class="kpi-label">KPI four</div>
+  <div class="kpi kpi-blue">
+    <div class="kpi-label">Unique Vendors</div>
     <div class="kpi-value" id="kpi-4">—</div>
     <div class="kpi-delta" id="kpi-4-d"></div>
   </div>
@@ -303,34 +303,34 @@ tbody td.muted { color: var(--muted); }
 <div class="chart-row">
   <div class="card">
     <div class="card-header">
-      <span class="card-title">Bar / line chart</span>
-      <span class="card-hint">ENTITY."Field" by period</span>
+      <span class="card-title">Monthly Spend Trend</span>
+      <span class="card-hint">OPOR."DocTotal" · rolling 6 months</span>
     </div>
-    <canvas id="chart-main" height="140"></canvas>
+    <canvas id="chart-monthly" height="160"></canvas>
   </div>
   <div class="card">
     <div class="card-header">
-      <span class="card-title">Breakdown</span>
-      <span class="card-hint">by category</span>
+      <span class="card-title">Top Vendors by Spend</span>
+      <span class="card-hint">OCRD · top 8 vendors</span>
     </div>
-    <canvas id="chart-donut" height="140"></canvas>
+    <canvas id="chart-vendors" height="160"></canvas>
   </div>
 </div>
 
-<!-- ── Table ── -->
+<!-- ── Top Vendors table ── -->
 <div class="card">
   <div class="card-header">
-    <span class="card-title">Detail table</span>
-    <span class="card-hint">ENTITY · key fields</span>
+    <span class="card-title">Vendor Summary</span>
+    <span class="card-hint">OPOR · aggregated by vendor · top 10</span>
   </div>
   <table>
     <thead>
       <tr>
-        <th>Name / description</th>
-        <th>Code</th>
-        <th>Date</th>
-        <th>Status</th>
-        <th class="r">Amount</th>
+        <th>Vendor</th>
+        <th class="r">POs</th>
+        <th class="r">Total Spend</th>
+        <th class="r">Avg PO Value</th>
+        <th class="r">Share</th>
         <th class="r">Open in SAP</th>
       </tr>
     </thead>
@@ -349,70 +349,77 @@ tbody td.muted { color: var(--muted); }
 <script>
 // ═══════════════════════════════════════════════════════════════════
 //  B1Report contract
-//  The agent sets window.__B1_AGENT_CONTROLLED__ = true before
-//  calling load(). Templates must not break if load() is called
-//  more than once (e.g. on refresh).
 // ═══════════════════════════════════════════════════════════════════
 window.B1Report = {
 
   meta: {
-    id:          "my-report-id",          // ← unique slug, matches manifest
-    name:        "My report name",        // ← display name
-    description: "What this report shows and when to use it — the AI reads this for intent matching",
-    tags:        ["tag1", "tag2"],        // ← keywords for intent matching
-    queries:     ["rows", "summary"]      // ← must match query keys in manifest.json
+    id:          "purchase-spend",
+    name:        "Purchase & vendor spend",
+    description: "PO volume and vendor spend breakdown for the last 6 months. Use when user asks about purchasing, vendors, POs, or procurement.",
+    tags:        ["purchasing", "vendors", "po", "spend", "procurement"],
+    queries:     ["purchaseOrders"]
   },
 
-  // Chart references — stored so they can be destroyed on reload
   _charts: {},
 
   load(data) {
     // ── Unpack ────────────────────────────────────────────────
-    const rows    = data.rows    || [];
-    const base    = data.webClientBase || '';
-    const links   = data.webClientLinks || {};
-    const company = data.company || '—';
+    const purchaseOrders = data.purchaseOrders || [];
+    const base           = data.webClientBase || '';
+    const links          = data.webClientLinks || {};
+    const company        = data.company || '—';
+    const currency       = purchaseOrders[0]?.DocCurrency || 'DKK';
 
     // ── Header & badge ────────────────────────────────────────
     const isDemo = !window.__B1_AGENT_CONTROLLED__;
-    document.getElementById('rpt-title').textContent   = this.meta.name;
     document.getElementById('rpt-company').textContent = company;
     document.getElementById('rpt-badge').textContent   = isDemo ? '● Demo' : '● Live';
     document.getElementById('rpt-badge').className     = 'badge ' + (isDemo ? 'badge-demo' : 'badge-live');
     document.getElementById('rpt-meta').textContent    =
-      `${rows.length} records · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
+      `${purchaseOrders.length} purchase orders · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
     document.getElementById('rpt-ts').textContent =
       'Generated: ' + new Date().toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' });
 
-    // ── KPIs ─────────────────────────────────────────────────
-    // Replace with real calculations from your data
-    const total   = rows.reduce((s, r) => s + (r.DocTotal || 0), 0);
-    const balance = rows.reduce((s, r) => s + ((r.DocTotal || 0) - (r.PaidToDate || 0)), 0);
-
+    // ── Helpers ───────────────────────────────────────────────
     const fmtK = n => {
       if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
       if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
       return n.toLocaleString('da-DK');
     };
 
-    document.getElementById('kpi-1').textContent = fmtK(total);
-    document.getElementById('kpi-2').textContent = rows.length;
-    document.getElementById('kpi-3').textContent = rows.length ? fmtK(total / rows.length) : '—';
-    document.getElementById('kpi-4').textContent = fmtK(balance);
+    // ── KPI calculations ──────────────────────────────────────
+    const totalSpend = purchaseOrders.reduce((s, r) => s + (r.DocTotal || 0), 0);
+    const poCount    = purchaseOrders.length;
+
+    // Vendor aggregation
+    const vendorMap = {};
+    purchaseOrders.forEach(r => {
+      const key = r.CardCode || '—';
+      if (!vendorMap[key]) vendorMap[key] = { CardCode: r.CardCode, CardName: r.CardName || key, count: 0, total: 0 };
+      vendorMap[key].count++;
+      vendorMap[key].total += r.DocTotal || 0;
+    });
+    const vendors = Object.values(vendorMap).sort((a, b) => b.total - a.total);
+
+    document.getElementById('kpi-1').textContent = fmtK(totalSpend);
+    document.getElementById('kpi-2').textContent = poCount;
+    document.getElementById('kpi-3').textContent = poCount ? fmtK(Math.round(totalSpend / poCount)) : '—';
+    document.getElementById('kpi-4').textContent = vendors.length;
 
     const setDelta = (id, text, cls) => {
       const el = document.getElementById(id);
       el.textContent = text;
       el.className = 'kpi-delta ' + (cls || '');
     };
-    setDelta('kpi-1-d', '↑ 12.4% vs prev period', 'up');
-    setDelta('kpi-4-d', balance > 0 ? '↑ Action required' : '✓ All clear', balance > 0 ? 'down' : 'up');
+    setDelta('kpi-1-d', currency);
+    setDelta('kpi-2-d', 'rolling 6 months');
+    setDelta('kpi-3-d', currency);
+    setDelta('kpi-4-d', 'active this period');
 
-    // ── Bar chart ─────────────────────────────────────────────
-    // Derive monthly buckets from rows
+    // ── Monthly spend bar chart ───────────────────────────────
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const acc = {};
-    rows.forEach(r => {
+    purchaseOrders.forEach(r => {
       const d = new Date(r.DocDate || Date.now());
       const k = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}`;
       if (!acc[k]) acc[k] = { label: monthNames[d.getMonth()], value: 0, sort: k };
@@ -420,9 +427,9 @@ window.B1Report = {
     });
     const barData = Object.values(acc).sort((a, b) => a.sort.localeCompare(b.sort)).slice(-6);
 
-    if (this._charts.main) this._charts.main.destroy();
-    this._charts.main = new Chart(
-      document.getElementById('chart-main').getContext('2d'),
+    if (this._charts.monthly) this._charts.monthly.destroy();
+    this._charts.monthly = new Chart(
+      document.getElementById('chart-monthly').getContext('2d'),
       {
         type: 'bar',
         data: {
@@ -442,7 +449,7 @@ window.B1Report = {
           maintainAspectRatio: true,
           plugins: {
             legend: { display: false },
-            tooltip: B1Report._tooltipDefaults(rows[0]?.DocCurrency || 'DKK')
+            tooltip: B1Report._tooltipDefaults(currency)
           },
           scales: {
             x: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } },
@@ -456,87 +463,80 @@ window.B1Report = {
       }
     );
 
-    // ── Donut chart ───────────────────────────────────────────
-    // Replace slices with whatever breakdown makes sense for your report
-    const paid    = rows.filter(r => r.DocumentStatus === 'bost_Close').length;
-    const partial = rows.filter(r => r.DocumentStatus === 'bost_Open' && r.PaidToDate > 0).length;
-    const open    = rows.filter(r => r.DocumentStatus === 'bost_Open' && !(r.PaidToDate > 0)).length;
+    // ── Top vendors horizontal bar chart ──────────────────────
+    const topVendors = vendors.slice(0, 8);
 
-    if (this._charts.donut) this._charts.donut.destroy();
-    this._charts.donut = new Chart(
-      document.getElementById('chart-donut').getContext('2d'),
+    if (this._charts.vendors) this._charts.vendors.destroy();
+    this._charts.vendors = new Chart(
+      document.getElementById('chart-vendors').getContext('2d'),
       {
-        type: 'doughnut',
+        type: 'bar',
         data: {
-          labels: ['Paid', 'Partial', 'Open'],
+          labels: topVendors.map(v => v.CardName.length > 20 ? v.CardName.slice(0, 19) + '…' : v.CardName),
           datasets: [{
-            data: [paid, partial, open],
-            backgroundColor: ['rgba(5,150,105,0.85)', 'rgba(37,99,235,0.85)', 'rgba(217,119,6,0.85)'],
-            borderColor: '#ffffff',
-            borderWidth: 3,
-            hoverOffset: 4
+            data: topVendors.map(v => v.total),
+            backgroundColor: 'rgba(37,99,235,0.75)',
+            borderColor: 'rgba(37,99,235,1)',
+            borderWidth: 1,
+            borderRadius: 3
           }]
         },
         options: {
+          indexAxis: 'y',
           responsive: true,
           maintainAspectRatio: true,
-          cutout: '68%',
           plugins: {
-            legend: {
-              position: 'bottom',
-              labels: {
-                color: '#6b7280',
-                font: { family: "'DM Mono'", size: 10 },
-                boxWidth: 8, boxHeight: 8,
-                padding: 10,
-                usePointStyle: true, pointStyleWidth: 8
-              }
+            legend: { display: false },
+            tooltip: B1Report._tooltipDefaults(currency)
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false },
+              border: { display: false, dash: [3, 3] },
+              ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 4 }
             },
-            tooltip: B1Report._tooltipDefaults()
+            y: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } }
           }
         }
       }
     );
 
-    // ── Table ─────────────────────────────────────────────────
+    // ── Vendor summary table ──────────────────────────────────
     const tbody = document.getElementById('tbl-body');
     tbody.innerHTML = '';
 
-    if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty">No data returned from Service Layer</td></tr>';
+    if (!vendors.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">No purchase orders returned from Service Layer</td></tr>';
       return;
     }
 
-    rows.slice(0, 50).forEach(row => {
-      const balance = (row.DocTotal || 0) - (row.PaidToDate || 0);
-      const isPaid  = row.DocumentStatus === 'bost_Close' || balance <= 0;
-      const isOpen  = row.DocumentStatus === 'bost_Open' && !(row.PaidToDate > 0);
+    const maxTotal = vendors[0]?.total || 1;
 
-      // Deeplink — uses webClientLinks from manifest, adjust link key and placeholder to match your report
-      const link = (base && links.invoice && row.DocEntry)
-        ? base + links.invoice.replace('{DocEntry}', row.DocEntry)
-        : '';
-      const dateStr = row.DocDate
-        ? new Date(row.DocDate).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' })
-        : '—';
+    vendors.slice(0, 10).forEach(v => {
+      const sharePct    = Math.round((v.total / totalSpend) * 100);
+      const barWidthPct = Math.round((v.total / maxTotal) * 100);
+      const link = (base && links.customer && v.CardCode)
+        ? base + links.customer.replace('{CardCode}', v.CardCode) : '';
 
       const tr = document.createElement('tr');
       tr.onclick = () => { if (link) window.open(link, '_blank'); };
       tr.innerHTML = `
         <td>
-          <div class="row-primary">${row.CardName || row.ItemCode || '—'}</div>
-          <div class="row-secondary">${row.CardCode || ''}</div>
+          <div class="row-primary">${v.CardName}</div>
+          <div class="row-secondary">${v.CardCode || ''}</div>
         </td>
-        <td class="mono muted">${row.DocNum || '—'}</td>
-        <td class="mono muted">${dateStr}</td>
-        <td>
-          <span class="pill">
-            <span class="dot ${isPaid ? 'dot-green' : isOpen ? 'dot-amber' : 'dot-blue'}"></span>
-            ${isPaid ? 'Paid' : isOpen ? 'Open' : 'Partial'}
-          </span>
+        <td class="r mono muted">${v.count}</td>
+        <td class="r mono">
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill" style="width:${barWidthPct}%"></div></div>
+            ${v.total.toLocaleString('da-DK')}
+          </div>
         </td>
-        <td class="r mono">${(row.DocTotal || 0).toLocaleString('da-DK')}</td>
-        <td class="r link-cell">${link ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
+        <td class="r mono muted">${fmtK(Math.round(v.total / v.count))}</td>
+        <td class="r mono muted">${sharePct}%</td>
+        <td class="r link-cell">${link
+          ? `<a href="${link}" target="_blank">Open →</a>`
+          : '<span style="color:var(--border)">—</span>'}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -564,28 +564,51 @@ window.B1Report = {
 };
 
 // ═══════════════════════════════════════════════════════════════════
-//  Demo mode — loads mock data when opened directly in a browser.
-//  Replace MOCK with realistic sample data for your report type.
-//  The agent skips this block by setting __B1_AGENT_CONTROLLED__.
+//  Demo mode
 // ═══════════════════════════════════════════════════════════════════
 (function demoIfStandalone() {
   if (window.__B1_AGENT_CONTROLLED__) return;
 
   const MOCK = {
-    rows: [
-      { DocEntry:1, DocNum:4821, CardCode:"C0042", CardName:"Novo Industri A/S",      DocDate:"2025-03-18", DocDueDate:"2025-04-18", DocTotal:84200,  PaidToDate:84200,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:2, DocNum:4820, CardCode:"C0017", CardName:"Danfoss Group",           DocDate:"2025-03-15", DocDueDate:"2025-04-15", DocTotal:142500, PaidToDate:71250,  DocCurrency:"DKK", DocumentStatus:"bost_Open",  Cancelled:"tNO" },
-      { DocEntry:3, DocNum:4819, CardCode:"C0088", CardName:"Vestas Wind Systems",     DocDate:"2025-03-10", DocDueDate:"2025-04-10", DocTotal:67800,  PaidToDate:0,      DocCurrency:"DKK", DocumentStatus:"bost_Open",  Cancelled:"tNO" },
-      { DocEntry:4, DocNum:4818, CardCode:"C0031", CardName:"Arla Foods amba",         DocDate:"2025-03-07", DocDueDate:"2025-03-31", DocTotal:38400,  PaidToDate:38400,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:5, DocNum:4817, CardCode:"C0055", CardName:"DSV Panalpina A/S",       DocDate:"2025-02-28", DocDueDate:"2025-03-28", DocTotal:95100,  PaidToDate:0,      DocCurrency:"DKK", DocumentStatus:"bost_Open",  Cancelled:"tNO" },
-      { DocEntry:6, DocNum:4816, CardCode:"C0017", CardName:"Danfoss Group",           DocDate:"2025-02-20", DocDueDate:"2025-03-20", DocTotal:118000, PaidToDate:118000, DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:7, DocNum:4815, CardCode:"C0099", CardName:"Ørsted A/S",              DocDate:"2025-02-14", DocDueDate:"2025-03-14", DocTotal:201000, PaidToDate:201000, DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
-      { DocEntry:8, DocNum:4814, CardCode:"C0042", CardName:"Novo Industri A/S",       DocDate:"2025-02-05", DocDueDate:"2025-03-05", DocTotal:56700,  PaidToDate:56700,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
+    purchaseOrders: [
+      // Oct 2025
+      { DocEntry:301, DocNum:3001, CardCode:"V0011", CardName:"Siemens DK A/S",           DocDate:"2025-10-05", DocTotal:142000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:302, DocNum:3002, CardCode:"V0024", CardName:"ABB Electrification",       DocDate:"2025-10-12", DocTotal:87500,  DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:303, DocNum:3003, CardCode:"V0037", CardName:"Festo A/S",                 DocDate:"2025-10-18", DocTotal:34200,  DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:304, DocNum:3004, CardCode:"V0052", CardName:"Parker Hannifin DK",        DocDate:"2025-10-25", DocTotal:215000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:305, DocNum:3005, CardCode:"V0011", CardName:"Siemens DK A/S",            DocDate:"2025-10-29", DocTotal:96000,  DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      // Nov 2025
+      { DocEntry:306, DocNum:3006, CardCode:"V0063", CardName:"Schneider Electric DK",     DocDate:"2025-11-04", DocTotal:178000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:307, DocNum:3007, CardCode:"V0024", CardName:"ABB Electrification",       DocDate:"2025-11-10", DocTotal:112000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:308, DocNum:3008, CardCode:"V0077", CardName:"Bosch Rexroth DK",          DocDate:"2025-11-15", DocTotal:65000,  DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:309, DocNum:3009, CardCode:"V0052", CardName:"Parker Hannifin DK",        DocDate:"2025-11-22", DocTotal:189000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:310, DocNum:3010, CardCode:"V0037", CardName:"Festo A/S",                 DocDate:"2025-11-28", DocTotal:48000,  DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      // Dec 2025
+      { DocEntry:311, DocNum:3011, CardCode:"V0011", CardName:"Siemens DK A/S",            DocDate:"2025-12-03", DocTotal:234000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:312, DocNum:3012, CardCode:"V0088", CardName:"Grundfos Pumps A/S",        DocDate:"2025-12-09", DocTotal:145000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:313, DocNum:3013, CardCode:"V0063", CardName:"Schneider Electric DK",     DocDate:"2025-12-16", DocTotal:98000,  DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:314, DocNum:3014, CardCode:"V0024", CardName:"ABB Electrification",       DocDate:"2025-12-20", DocTotal:167000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      // Jan 2026
+      { DocEntry:315, DocNum:3015, CardCode:"V0052", CardName:"Parker Hannifin DK",        DocDate:"2026-01-07", DocTotal:312000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:316, DocNum:3016, CardCode:"V0077", CardName:"Bosch Rexroth DK",          DocDate:"2026-01-14", DocTotal:88000,  DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:317, DocNum:3017, CardCode:"V0011", CardName:"Siemens DK A/S",            DocDate:"2026-01-20", DocTotal:127000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:318, DocNum:3018, CardCode:"V0099", CardName:"Danfoss Drives A/S",        DocDate:"2026-01-27", DocTotal:195000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      // Feb 2026
+      { DocEntry:319, DocNum:3019, CardCode:"V0088", CardName:"Grundfos Pumps A/S",        DocDate:"2026-02-04", DocTotal:218000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:320, DocNum:3020, CardCode:"V0063", CardName:"Schneider Electric DK",     DocDate:"2026-02-10", DocTotal:143000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:321, DocNum:3021, CardCode:"V0024", CardName:"ABB Electrification",       DocDate:"2026-02-17", DocTotal:76000,  DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      { DocEntry:322, DocNum:3022, CardCode:"V0052", CardName:"Parker Hannifin DK",        DocDate:"2026-02-24", DocTotal:267000, DocCurrency:"DKK", DocumentStatus:"bost_Close" },
+      // Mar 2026
+      { DocEntry:323, DocNum:3023, CardCode:"V0011", CardName:"Siemens DK A/S",            DocDate:"2026-03-04", DocTotal:158000, DocCurrency:"DKK", DocumentStatus:"bost_Open" },
+      { DocEntry:324, DocNum:3024, CardCode:"V0099", CardName:"Danfoss Drives A/S",        DocDate:"2026-03-10", DocTotal:224000, DocCurrency:"DKK", DocumentStatus:"bost_Open" },
+      { DocEntry:325, DocNum:3025, CardCode:"V0077", CardName:"Bosch Rexroth DK",          DocDate:"2026-03-17", DocTotal:91000,  DocCurrency:"DKK", DocumentStatus:"bost_Open" },
+      { DocEntry:326, DocNum:3026, CardCode:"V0037", CardName:"Festo A/S",                 DocDate:"2026-03-24", DocTotal:52000,  DocCurrency:"DKK", DocumentStatus:"bost_Open" },
     ],
     company:       "CRONUS_DK (demo)",
     webClientBase: "",
     webClientLinks: {
-      invoice: "/webapp/index.html#/OINV/{DocEntry}"
+      customer:      "/webapp/index.html#/OCRD/{CardCode}",
+      purchaseOrder: "/webapp/index.html#/OPOR/{DocEntry}"
     }
   };
 
