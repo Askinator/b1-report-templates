@@ -18,9 +18,9 @@
       "queries": [
         {
           "key": "invoices",
-          "endpoint": "OINV",
-          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,PaidToDate,DocCur,DocStatus",
-          "filter": "DocDate ge '{date_6m_ago}' and Cancelled eq 'N'",
+          "endpoint": "Invoices",
+          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,PaidToDate,DocCurrency,DocumentStatus",
+          "filter": "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
           "orderby": "DocDate desc",
           "top": 200
         }
@@ -41,9 +41,9 @@
       "queries": [
         {
           "key": "openInvoices",
-          "endpoint": "OINV",
-          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,PaidToDate,DocCur",
-          "filter": "DocStatus eq 'O' and Cancelled eq 'N'",
+          "endpoint": "Invoices",
+          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,PaidToDate,DocCurrency",
+          "filter": "DocumentStatus eq 'bost_Open' and Cancelled eq 'tNO'",
           "orderby": "DocDueDate asc",
           "top": 500
         }
@@ -64,17 +64,10 @@
       "tags": ["inventory", "stock", "warehouse", "items", "reorder"],
       "queries": [
         {
-          "key": "stock",
-          "endpoint": "OITW",
-          "select": "ItemCode,WhsCode,OnHand,IsCommited,OnOrder",
-          "filter": "OnHand ne 0",
-          "top": 500
-        },
-        {
           "key": "items",
-          "endpoint": "OITM",
-          "select": "ItemCode,ItemName,ItmsGrpCod,MinLevel,MaxLevel,LastPurPrc",
-          "filter": "validFor eq 'Y' and InvntItem eq 'Y'",
+          "endpoint": "Items",
+          "select": "ItemCode,ItemName,ItemsGroupCode,MinInventory,MaxInventory,LastPurchasePrice,ItemWarehouseInfoCollection",
+          "filter": "Valid eq 'tYES' and InventoryItem eq 'tYES'",
           "top": 500
         }
       ],
@@ -94,9 +87,9 @@
       "queries": [
         {
           "key": "purchaseOrders",
-          "endpoint": "OPOR",
-          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,DocCur,DocStatus",
-          "filter": "DocDate ge '{date_6m_ago}' and Cancelled eq 'N'",
+          "endpoint": "PurchaseOrders",
+          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,DocCurrency,DocumentStatus",
+          "filter": "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
           "orderby": "DocDate desc",
           "top": 200
         }

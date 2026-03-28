@@ -392,7 +392,7 @@ window.B1Report = {
     const base     = data.webClientBase || '';
     const links    = data.webClientLinks || {};
     const company  = data.company || '—';
-    const currency = invoices[0]?.DocCur || 'DKK';
+    const currency = invoices[0]?.DocCurrency || invoices[0]?.DocCur || 'DKK';
 
     // ── Header & badge ────────────────────────────────────────
     const isDemo = !window.__B1_AGENT_CONTROLLED__;
@@ -406,8 +406,9 @@ window.B1Report = {
 
     // ── KPI calculations ──────────────────────────────────────
     const totalRevenue = invoices.reduce((s, r) => s + (r.DocTotal || 0), 0);
+    const getStatus = r => r.DocumentStatus || r.DocStatus;
     const overdueBalance = invoices
-      .filter(r => r.DocStatus === 'O')
+      .filter(r => getStatus(r) === 'bost_Open' || getStatus(r) === 'O')
       .reduce((s, r) => s + Math.max(0, (r.DocTotal || 0) - (r.PaidToDate || 0)), 0);
 
     const fmtK = n => {
@@ -496,9 +497,11 @@ window.B1Report = {
     );
 
     // ── Donut chart — payment status ──────────────────────────
-    const paid    = invoices.filter(r => r.DocStatus === 'C').length;
-    const partial = invoices.filter(r => r.DocStatus === 'O' && r.PaidToDate > 0).length;
-    const open    = invoices.filter(r => r.DocStatus === 'O' && !(r.PaidToDate > 0)).length;
+    const isOpen   = r => getStatus(r) === 'bost_Open' || getStatus(r) === 'O';
+    const isClosed = r => getStatus(r) === 'bost_Close' || getStatus(r) === 'C';
+    const paid    = invoices.filter(r => isClosed(r)).length;
+    const partial = invoices.filter(r => isOpen(r) && r.PaidToDate > 0).length;
+    const open    = invoices.filter(r => isOpen(r) && !(r.PaidToDate > 0)).length;
 
     if (this._charts.donut) this._charts.donut.destroy();
     this._charts.donut = new Chart(
