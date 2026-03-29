@@ -2,15 +2,15 @@
   "version": 1.2,
   "updated": "2026-03-29",
   "deeplinks": {
-    "invoice":         { "objCode": "OINV", "key": "DocEntry" },
-    "customer":        { "objCode": "OCRD", "key": "CardCode" },
-    "purchaseOrder":   { "objCode": "OPOR", "key": "DocEntry" },
-    "purchaseInvoice": { "objCode": "OPCH", "key": "DocEntry" },
-    "item":            { "objCode": "OITM", "key": "ItemCode" },
-    "payment":         { "objCode": "ORCT", "key": "DocEntry" },
-    "order":           { "objCode": "ORDR", "key": "DocEntry" },
-    "quotation":       { "objCode": "OQUT", "key": "DocEntry" },
-    "creditNote":      { "objCode": "ORIN", "key": "DocEntry" }
+    "invoice":         { "objName": "Invoices",         "key": "DocEntry" },
+    "customer":        { "objName": "BusinessPartners", "key": "CardCode" },
+    "purchaseOrder":   { "objName": "PurchaseOrders",   "key": "DocEntry" },
+    "purchaseInvoice": { "objName": "PurchaseInvoices", "key": "DocEntry" },
+    "item":            { "objName": "Items",             "key": "ItemCode" },
+    "payment":         { "objName": "IncomingPayments", "key": "DocEntry" },
+    "order":           { "objName": "Orders",            "key": "DocEntry" },
+    "quotation":       { "objName": "Quotations",        "key": "DocEntry" },
+    "creditNote":      { "objName": "CreditNotes",       "key": "DocEntry" }
   },
   "reports": [
     {
