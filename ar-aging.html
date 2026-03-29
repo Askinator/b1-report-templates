@@ -389,7 +389,8 @@ window.B1Report = {
     // ── Unpack ────────────────────────────────────────────────
     const openInvoices = data.openInvoices || [];
     const base         = data.webClientBase || '';
-    const links        = data.webClientLinks || {};
+    const deeplinks    = data.deeplinks || {};
+    const sapLink = (type, value) => { const def = deeplinks[type]; if (!base || !def || !value) return ''; const c = def.objCode; return `${base}/index.html#webclient-${c}&/Objects/${c}/Detail?view=${c}.detailView&id=${c}%252C${encodeURIComponent(value)}`; };
     const company      = data.company || '—';
     const currency     = openInvoices[0]?.DocCurrency || 'DKK';
     const today        = new Date();
@@ -578,10 +579,8 @@ window.B1Report = {
     const sorted = [...enriched].sort((a, b) => b._bucket.days - a._bucket.days);
 
     sorted.forEach(r => {
-      const invoiceLink = (base && links.invoice && r.DocEntry)
-        ? base + links.invoice.replace('{DocEntry}', r.DocEntry) : '';
-      const customerLink = (base && links.customer && r.CardCode)
-        ? base + links.customer.replace('{CardCode}', r.CardCode) : '';
+      const invoiceLink  = sapLink('invoice', r.DocEntry);
+      const customerLink = sapLink('customer', r.CardCode);
 
       const fmtDate = s => s
         ? new Date(s).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -668,9 +667,9 @@ window.B1Report = {
     ],
     company:       "CRONUS_DK (demo)",
     webClientBase: "",
-    webClientLinks: {
-      invoice:  "/webapp/index.html#/OINV/{DocEntry}",
-      customer: "/webapp/index.html#/OCRD/{CardCode}"
+    deeplinks: {
+      invoice:  { objCode: "OINV", key: "DocEntry" },
+      customer: { objCode: "OCRD", key: "CardCode" }
     }
   };
 

@@ -202,7 +202,8 @@ window.B1Report = {
   load(data) {
     const orders   = data.orders || [];
     const base     = data.webClientBase || '';
-    const links    = data.webClientLinks || {};
+    const deeplinks = data.deeplinks || {};
+    const sapLink = (type, value) => { const def = deeplinks[type]; if (!base || !def || !value) return ''; const c = def.objCode; return `${base}/index.html#webclient-${c}&/Objects/${c}/Detail?view=${c}.detailView&id=${c}%252C${encodeURIComponent(value)}`; };
     const company  = data.company || '—';
     const currency = orders[0]?.DocCurrency || 'DKK';
     const today    = new Date();
@@ -351,8 +352,7 @@ window.B1Report = {
     const sorted = [...enriched].sort((a, b) => b._daysLate - a._daysLate);
 
     sorted.forEach(r => {
-      const link = (base && links.order && r.DocEntry)
-        ? base + links.order.replace('{DocEntry}', r.DocEntry) : '';
+      const link = sapLink('order', r.DocEntry);
 
       const fmtDate = s => s
         ? new Date(s).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -410,7 +410,7 @@ window.B1Report = {
     ],
     company: "CRONUS_DK (demo)",
     webClientBase: "",
-    webClientLinks: { order: "/webapp/index.html#/ORDR/{DocEntry}" }
+    deeplinks: { order: { objCode: "ORDR", key: "DocEntry" } }
   };
 
   window.B1Report.load(MOCK);

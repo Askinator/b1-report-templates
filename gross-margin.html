@@ -194,7 +194,8 @@ window.B1Report = {
   load(data) {
     const marginData = data.marginData || [];
     const base       = data.webClientBase || '';
-    const links      = data.webClientLinks || {};
+    const deeplinks  = data.deeplinks || {};
+    const sapLink = (type, value) => { const def = deeplinks[type]; if (!base || !def || !value) return ''; const c = def.objCode; return `${base}/index.html#webclient-${c}&/Objects/${c}/Detail?view=${c}.detailView&id=${c}%252C${encodeURIComponent(value)}`; };
     const company    = data.company || '—';
     const currency   = data.currency || 'DKK';
 
@@ -302,8 +303,7 @@ window.B1Report = {
     const sorted = [...enriched].sort((a, b) => a._pct - b._pct);
 
     sorted.forEach(r => {
-      const link = (base && links.customer && r.CardCode)
-        ? base + links.customer.replace('{CardCode}', r.CardCode) : '';
+      const link = sapLink('customer', r.CardCode);
 
       const barColor = r._health.key === 'low' ? 'var(--red)' : r._health.key === 'mid' ? 'var(--amber)' : 'var(--green)';
 
@@ -347,7 +347,7 @@ window.B1Report = {
     currency: "DKK",
     company: "CRONUS_DK (demo)",
     webClientBase: "",
-    webClientLinks: { customer: "/webapp/index.html#/OCRD/{CardCode}" }
+    deeplinks: { customer: { objCode: "OCRD", key: "CardCode" } }
   };
   window.B1Report.load(MOCK);
 })();

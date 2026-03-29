@@ -389,7 +389,8 @@ window.B1Report = {
     // ── Unpack ────────────────────────────────────────────────
     const items   = data.items   || [];
     const base    = data.webClientBase || '';
-    const links   = data.webClientLinks || {};
+    const deeplinks = data.deeplinks || {};
+    const sapLink = (type, value) => { const def = deeplinks[type]; if (!base || !def || !value) return ''; const c = def.objCode; return `${base}/index.html#webclient-${c}&/Objects/${c}/Detail?view=${c}.detailView&id=${c}%252C${encodeURIComponent(value)}`; };
     const company = data.company || '—';
 
     // ── Header & badge ────────────────────────────────────────
@@ -562,8 +563,7 @@ window.B1Report = {
     });
 
     sorted.forEach(item => {
-      const link = (base && links.item && item.ItemCode)
-        ? base + links.item.replace('{ItemCode}', item.ItemCode) : '';
+      const link = sapLink('item', item.ItemCode);
 
       const gapCell = item._gap > 0
         ? `<span style="color:var(--red);font-weight:500">${item._gap.toLocaleString('da-DK')}</span>`
@@ -650,9 +650,7 @@ window.B1Report = {
     ],
     company:       "CRONUS_DK (demo)",
     webClientBase: "",
-    webClientLinks: {
-      item: "/webapp/index.html#/OITM/{ItemCode}"
-    }
+    deeplinks: { item: { objCode: "OITM", key: "ItemCode" } }
   };
 
   window.B1Report.load(MOCK);

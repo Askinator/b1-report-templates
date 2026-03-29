@@ -189,7 +189,8 @@ window.B1Report = {
   load(data) {
     const slowItems = data.slowItems || [];
     const base      = data.webClientBase || '';
-    const links     = data.webClientLinks || {};
+    const deeplinks = data.deeplinks || {};
+    const sapLink = (type, value) => { const def = deeplinks[type]; if (!base || !def || !value) return ''; const c = def.objCode; return `${base}/index.html#webclient-${c}&/Objects/${c}/Detail?view=${c}.detailView&id=${c}%252C${encodeURIComponent(value)}`; };
     const company   = data.company || '—';
     const today     = new Date();
     today.setHours(0, 0, 0, 0);
@@ -311,8 +312,7 @@ window.B1Report = {
     const sorted = [...enriched].sort((a, b) => b._daysIdle - a._daysIdle);
 
     sorted.forEach(r => {
-      const link = (base && links.item && r.ItemCode)
-        ? base + links.item.replace('{ItemCode}', r.ItemCode) : '';
+      const link = sapLink('item', r.ItemCode);
       const fmtDate = s => s ? new Date(s).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Never';
 
       const tr = document.createElement('tr');
@@ -353,7 +353,7 @@ window.B1Report = {
     ],
     company: "CRONUS_DK (demo)",
     webClientBase: "",
-    webClientLinks: { item: "/webapp/index.html#/OITM/{ItemCode}" }
+    deeplinks: { item: { objCode: "OITM", key: "ItemCode" } }
   };
   window.B1Report.load(MOCK);
 })();

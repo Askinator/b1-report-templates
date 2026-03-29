@@ -183,7 +183,8 @@ window.B1Report = {
   load(data) {
     const apInvoices = data.apInvoices || [];
     const base       = data.webClientBase || '';
-    const links      = data.webClientLinks || {};
+    const deeplinks  = data.deeplinks || {};
+    const sapLink = (type, value) => { const def = deeplinks[type]; if (!base || !def || !value) return ''; const c = def.objCode; return `${base}/index.html#webclient-${c}&/Objects/${c}/Detail?view=${c}.detailView&id=${c}%252C${encodeURIComponent(value)}`; };
     const company    = data.company || '—';
     const currency   = apInvoices[0]?.DocCurrency || 'DKK';
     const today      = new Date();
@@ -319,8 +320,7 @@ window.B1Report = {
     const sorted = [...enriched].sort((a, b) => a._daysToDue - b._daysToDue);
 
     sorted.forEach(r => {
-      const link = (base && links.purchaseInvoice && r.DocEntry)
-        ? base + links.purchaseInvoice.replace('{DocEntry}', r.DocEntry) : '';
+      const link = sapLink('purchaseInvoice', r.DocEntry);
 
       const fmtDate = s => s ? new Date(s).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
@@ -367,7 +367,7 @@ window.B1Report = {
     ],
     company: "CRONUS_DK (demo)",
     webClientBase: "",
-    webClientLinks: { purchaseInvoice: "/webapp/index.html#/OPCH/{DocEntry}" }
+    deeplinks: { purchaseInvoice: { objCode: "OPCH", key: "DocEntry" } }
   };
   window.B1Report.load(MOCK);
 })();

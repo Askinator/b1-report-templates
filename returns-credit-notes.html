@@ -174,7 +174,8 @@ window.B1Report = {
   load(data) {
     const creditNotes = data.creditNotes || [];
     const base        = data.webClientBase || '';
-    const links       = data.webClientLinks || {};
+    const deeplinks   = data.deeplinks || {};
+    const sapLink = (type, value) => { const def = deeplinks[type]; if (!base || !def || !value) return ''; const c = def.objCode; return `${base}/index.html#webclient-${c}&/Objects/${c}/Detail?view=${c}.detailView&id=${c}%252C${encodeURIComponent(value)}`; };
     const company     = data.company || '—';
     const currency    = creditNotes[0]?.DocCurrency || 'DKK';
 
@@ -285,8 +286,7 @@ window.B1Report = {
     const sorted = [...creditNotes].sort((a, b) => (b.DocDate || '').localeCompare(a.DocDate || ''));
 
     sorted.slice(0, 50).forEach(r => {
-      const link = (base && links.creditNote && r.DocEntry)
-        ? base + links.creditNote.replace('{DocEntry}', r.DocEntry) : '';
+      const link = sapLink('creditNote', r.DocEntry);
       const fmtDate = s => s ? new Date(s).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
       const tr = document.createElement('tr');
@@ -328,7 +328,7 @@ window.B1Report = {
     ],
     company: "CRONUS_DK (demo)",
     webClientBase: "",
-    webClientLinks: { creditNote: "/webapp/index.html#/ORIN/{DocEntry}" }
+    deeplinks: { creditNote: { objCode: "ORIN", key: "DocEntry" } }
   };
   window.B1Report.load(MOCK);
 })();

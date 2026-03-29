@@ -191,7 +191,8 @@ window.B1Report = {
   load(data) {
     const quotations = data.quotations || [];
     const base       = data.webClientBase || '';
-    const links      = data.webClientLinks || {};
+    const deeplinks  = data.deeplinks || {};
+    const sapLink = (type, value) => { const def = deeplinks[type]; if (!base || !def || !value) return ''; const c = def.objCode; return `${base}/index.html#webclient-${c}&/Objects/${c}/Detail?view=${c}.detailView&id=${c}%252C${encodeURIComponent(value)}`; };
     const company    = data.company || '—';
     const currency   = quotations[0]?.DocCurrency || 'DKK';
     const today      = new Date();
@@ -312,8 +313,7 @@ window.B1Report = {
     const sorted = [...enriched].sort((a, b) => a._daysToExpiry - b._daysToExpiry);
 
     sorted.forEach(r => {
-      const link = (base && links.quotation && r.DocEntry)
-        ? base + links.quotation.replace('{DocEntry}', r.DocEntry) : '';
+      const link = sapLink('quotation', r.DocEntry);
       const fmtDate = s => s ? new Date(s).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
       let statusDot, statusText;
@@ -357,7 +357,7 @@ window.B1Report = {
     ],
     company: "CRONUS_DK (demo)",
     webClientBase: "",
-    webClientLinks: { quotation: "/webapp/index.html#/OQUT/{DocEntry}" }
+    deeplinks: { quotation: { objCode: "OQUT", key: "DocEntry" } }
   };
   window.B1Report.load(MOCK);
 })();

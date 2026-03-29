@@ -193,7 +193,8 @@ window.B1Report = {
   load(data) {
     const customers = data.customers || [];
     const base      = data.webClientBase || '';
-    const links     = data.webClientLinks || {};
+    const deeplinks = data.deeplinks || {};
+    const sapLink = (type, value) => { const def = deeplinks[type]; if (!base || !def || !value) return ''; const c = def.objCode; return `${base}/index.html#webclient-${c}&/Objects/${c}/Detail?view=${c}.detailView&id=${c}%252C${encodeURIComponent(value)}`; };
     const company   = data.company || '—';
 
     const isDemo = !window.__B1_AGENT_CONTROLLED__;
@@ -303,8 +304,7 @@ window.B1Report = {
     const sorted = [...enriched].sort((a, b) => b._pct - a._pct);
 
     sorted.forEach(c => {
-      const link = (base && links.customer && c.CardCode)
-        ? base + links.customer.replace('{CardCode}', c.CardCode) : '';
+      const link = sapLink('customer', c.CardCode);
 
       const barColor = c._risk.key === 'over' ? 'var(--red)' : c._risk.key === 'high' ? 'var(--amber)' : 'var(--blue)';
 
@@ -349,7 +349,7 @@ window.B1Report = {
     ],
     company: "CRONUS_DK (demo)",
     webClientBase: "",
-    webClientLinks: { customer: "/webapp/index.html#/OCRD/{CardCode}" }
+    deeplinks: { customer: { objCode: "OCRD", key: "CardCode" } }
   };
   window.B1Report.load(MOCK);
 })();
