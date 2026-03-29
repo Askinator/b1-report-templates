@@ -1,13 +1,16 @@
 {
-  "version": 1.1,
-  "updated": "2026-03-28",
+  "version": 1.2,
+  "updated": "2026-03-29",
   "deeplinks": {
-    "invoice":       { "objCode": "OINV", "key": "DocEntry" },
-    "customer":      { "objCode": "OCRD", "key": "CardCode" },
-    "purchaseOrder": { "objCode": "OPOR", "key": "DocEntry" },
-    "item":          { "objCode": "OITM", "key": "ItemCode" },
-    "payment":       { "objCode": "ORCT", "key": "DocEntry" }
-
+    "invoice":         { "objCode": "OINV", "key": "DocEntry" },
+    "customer":        { "objCode": "OCRD", "key": "CardCode" },
+    "purchaseOrder":   { "objCode": "OPOR", "key": "DocEntry" },
+    "purchaseInvoice": { "objCode": "OPCH", "key": "DocEntry" },
+    "item":            { "objCode": "OITM", "key": "ItemCode" },
+    "payment":         { "objCode": "ORCT", "key": "DocEntry" },
+    "order":           { "objCode": "ORDR", "key": "DocEntry" },
+    "quotation":       { "objCode": "OQUT", "key": "DocEntry" },
+    "creditNote":      { "objCode": "ORIN", "key": "DocEntry" }
   },
   "reports": [
     {
@@ -99,6 +102,165 @@
         "charts": ["spend by vendor bar — top 8", "monthly spend trend"],
         "tables": ["top vendors aggregated with PO count and total"],
         "deeplinks": ["purchase order by DocEntry", "vendor by CardCode"]
+      }
+    },
+    {
+      "id": "open-sales-orders",
+      "name": "Open sales orders",
+      "description": "Delivery backlog showing open sales orders, days late, and fulfillment priority. Use when user asks about open orders, backlog, deliveries, fulfillment, or shipping.",
+      "tags": ["orders", "backlog", "delivery", "fulfillment", "sales orders", "shipping"],
+      "queries": [
+        {
+          "key": "orders",
+          "endpoint": "Orders",
+          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus",
+          "filter": "DocumentStatus eq 'bost_Open' and Cancelled eq 'tNO'",
+          "orderby": "DocDueDate asc",
+          "top": 300
+        }
+      ],
+      "aiHints": {
+        "kpis": ["backlog value", "open order count", "past due count", "avg days open"],
+        "charts": ["backlog by due-week bar (overdue in red)", "top customers by open value"],
+        "tables": ["all open orders sorted by days late descending"],
+        "warn": { "pastDueCount": 1 },
+        "deeplinks": ["order by DocEntry", "customer by CardCode"],
+        "compute": "derive days late from DocDueDate vs today"
+      }
+    },
+    {
+      "id": "ap-payment-schedule",
+      "name": "AP payment schedule",
+      "description": "Vendor invoices coming due in the next 7, 14, and 30 days, plus overdue items. Use when user asks about accounts payable, payments due, vendor invoices, cash outflow, or what to pay.",
+      "tags": ["ap", "payable", "payments", "vendors", "cash outflow", "due"],
+      "queries": [
+        {
+          "key": "apInvoices",
+          "endpoint": "PurchaseInvoices",
+          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,PaidToDate,DocCurrency,DocumentStatus",
+          "filter": "DocumentStatus eq 'bost_Open' and Cancelled eq 'tNO'",
+          "orderby": "DocDueDate asc",
+          "top": 500
+        }
+      ],
+      "aiHints": {
+        "kpis": ["total payable", "due this week", "due this month", "already overdue"],
+        "charts": ["cash outflow timeline by week", "top vendors by payable"],
+        "tables": ["all open AP invoices sorted by due date"],
+        "warn": { "overdueAmount": 50000 },
+        "deeplinks": ["purchase invoice by DocEntry", "vendor by CardCode"],
+        "compute": "outstanding = DocTotal - PaidToDate; days to due = DocDueDate vs today"
+      }
+    },
+    {
+      "id": "credit-limit-exposure",
+      "name": "Credit limit exposure",
+      "description": "Customers approaching or exceeding their credit limit. Shows exposure (AR balance + open orders + open deliveries) vs CreditLimit. Use when user asks about credit limits, exposure, credit risk, or order holds.",
+      "tags": ["credit", "limit", "exposure", "risk", "holds", "credit check"],
+      "queries": [
+        {
+          "key": "customers",
+          "endpoint": "BusinessPartners",
+          "select": "CardCode,CardName,CreditLimit,CurrentAccountBalance,OpenOrdersBalance,OpenDeliveryNotesBalance",
+          "filter": "CardType eq 'cCustomer' and CreditLimit gt 0",
+          "orderby": "CurrentAccountBalance desc",
+          "top": 200
+        }
+      ],
+      "aiHints": {
+        "kpis": ["total exposure", "over limit count", "above 80% count", "customers checked"],
+        "charts": ["exposure vs limit grouped bar — top 10", "risk distribution donut"],
+        "tables": ["all customers with credit limits sorted by utilization % descending"],
+        "warn": { "overLimitCount": 1 },
+        "deeplinks": ["customer by CardCode"],
+        "compute": "exposure = CurrentAccountBalance + OpenOrdersBalance + OpenDeliveryNotesBalance; utilization = exposure / CreditLimit × 100"
+      }
+    },
+    {
+      "id": "gross-margin",
+      "name": "Gross margin by customer",
+      "description": "Customer profitability analysis showing revenue, cost, gross profit and margin %. Flags customers below margin threshold. Use when user asks about margins, profitability, cost analysis, or pricing.",
+      "tags": ["margin", "profitability", "gross profit", "cost", "pricing"],
+      "queries": [
+        {
+          "key": "marginData",
+          "sql": "SELECT T0.\"CardCode\", T0.\"CardName\", SUM(T1.\"LineTotal\") AS \"Revenue\", SUM(T1.\"GrossBuyPr\" * T1.\"Quantity\") AS \"TotalCost\", SUM(T1.\"GrssProfit\") AS \"GrossProfit\" FROM OINV T0 INNER JOIN INV1 T1 ON T0.\"DocEntry\" = T1.\"DocEntry\" WHERE T0.\"CANCELED\" = 'N' AND T0.\"DocDate\" >= '{date_6m_ago}' GROUP BY T0.\"CardCode\", T0.\"CardName\" ORDER BY SUM(T1.\"LineTotal\") DESC"
+        }
+      ],
+      "aiHints": {
+        "kpis": ["total revenue", "gross profit", "overall margin %", "customers below threshold"],
+        "charts": ["revenue vs cost stacked bar — top 10", "margin % distribution donut"],
+        "tables": ["all customers sorted by margin % ascending"],
+        "warn": { "marginThreshold": 20 },
+        "deeplinks": ["customer by CardCode"],
+        "compute": "margin % = GrossProfit / Revenue × 100; requires SQLQueries endpoint"
+      }
+    },
+    {
+      "id": "quotation-pipeline",
+      "name": "Quotation pipeline",
+      "description": "Open quotations not yet converted to orders, with age in days, expiry tracking, and pipeline value. Use when user asks about quotes, quotations, pipeline, proposals, or sales funnel.",
+      "tags": ["quotations", "quotes", "pipeline", "proposals", "sales funnel"],
+      "queries": [
+        {
+          "key": "quotations",
+          "endpoint": "Quotations",
+          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus,ValidUntil",
+          "filter": "DocumentStatus eq 'bost_Open' and Cancelled eq 'tNO'",
+          "orderby": "DocDate desc",
+          "top": 200
+        }
+      ],
+      "aiHints": {
+        "kpis": ["pipeline value", "open quote count", "avg quote age", "expiring this week"],
+        "charts": ["pipeline by quote age bar", "quote freshness donut"],
+        "tables": ["all open quotations sorted by expiry date ascending"],
+        "warn": { "expiringThisWeek": 1 },
+        "deeplinks": ["quotation by DocEntry", "customer by CardCode"],
+        "compute": "age = today - DocDate; expiry = ValidUntil vs today"
+      }
+    },
+    {
+      "id": "returns-credit-notes",
+      "name": "Returns & credit notes",
+      "description": "AR credit notes issued in the last 6 months, grouped by customer and month. Shows return trends and repeat offenders. Use when user asks about returns, credit notes, refunds, or quality issues.",
+      "tags": ["returns", "credit notes", "refunds", "quality", "credits"],
+      "queries": [
+        {
+          "key": "creditNotes",
+          "endpoint": "CreditNotes",
+          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,DocCurrency",
+          "filter": "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
+          "orderby": "DocDate desc",
+          "top": 300
+        }
+      ],
+      "aiHints": {
+        "kpis": ["total credit value", "credit note count", "top returning customer", "avg credit value"],
+        "charts": ["monthly credit note trend bar", "top customers by credit value"],
+        "tables": ["all credit notes sorted by date descending"],
+        "deeplinks": ["credit note by DocEntry", "customer by CardCode"],
+        "notes": "DocumentLines contain BaseType/BaseEntry/BaseLine linking back to original invoice (BaseType=13)"
+      }
+    },
+    {
+      "id": "slow-moving-inventory",
+      "name": "Slow-moving inventory",
+      "description": "Items with stock on hand but zero or near-zero sales activity in the last 90+ days. Shows tied-up capital and dead stock. Use when user asks about slow movers, dead stock, idle inventory, or stock liquidation.",
+      "tags": ["slow moving", "dead stock", "idle", "inventory", "liquidation", "write-off"],
+      "queries": [
+        {
+          "key": "slowItems",
+          "sql": "SELECT T0.\"ItemCode\", T0.\"ItemName\", T0.\"OnHand\", T0.\"AvgPrice\", T0.\"LastPurPrc\" AS \"LastPurchasePrice\", (SELECT MAX(T1.\"DocDate\") FROM INV1 T1 INNER JOIN OINV T2 ON T1.\"DocEntry\" = T2.\"DocEntry\" WHERE T1.\"ItemCode\" = T0.\"ItemCode\" AND T2.\"CANCELED\" = 'N') AS \"LastSaleDate\" FROM OITM T0 WHERE T0.\"OnHand\" > 0 AND T0.\"InvntItem\" = 'Y' ORDER BY \"LastSaleDate\" ASC"
+        }
+      ],
+      "aiHints": {
+        "kpis": ["tied-up capital", "slow item count", "no movement 180d+", "longest idle item"],
+        "charts": ["tied-up capital by idle period bar", "movement status donut"],
+        "tables": ["all slow items sorted by days since last sale descending"],
+        "warn": { "deadStockItems": 1 },
+        "deeplinks": ["item by ItemCode"],
+        "compute": "stock value = OnHand × AvgPrice; days idle = today - LastSaleDate; requires SQLQueries endpoint for LastSaleDate subquery"
       }
     }
   ]
