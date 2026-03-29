@@ -175,7 +175,11 @@ window.B1Report = {
     const creditNotes = data.creditNotes || [];
     const base        = data.webClientBase || '';
     const deeplinks   = data.deeplinks || {};
-    const sapLink = (type, value) => { const def = deeplinks[type]; if (!base || !def || !value) return ''; const c = def.objCode; return `${base}/index.html#webclient-${c}&/Objects/${c}/Detail?view=${c}.detailView&id=${c}%252C${encodeURIComponent(value)}`; };
+    const sapLink = (type, value) => {
+      const def = deeplinks[type];
+      if (!def || !value) return '';
+      return B1Report.buildObjectUrl(def.objName, value);
+    };
     const company     = data.company || '—';
     const currency    = creditNotes[0]?.DocCurrency || 'DKK';
 

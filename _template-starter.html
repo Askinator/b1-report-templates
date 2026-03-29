@@ -373,12 +373,10 @@ window.B1Report = {
     const deeplinks = data.deeplinks || {};
     const company   = data.company || '—';
 
-    // Build a deeplink URL using the SAP web client URL format
     const sapLink = (type, value) => {
       const def = deeplinks[type];
-      if (!base || !def || !value) return '';
-      const c = def.objCode;
-      return `${base}/index.html#webclient-${c}&/Objects/${c}/Detail?view=${c}.detailView&id=${c}%252C${encodeURIComponent(value)}`;
+      if (!def || !value) return '';
+      return B1Report.buildObjectUrl(def.objName, value);
     };
 
     // ── Header & badge ────────────────────────────────────────
