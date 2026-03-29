@@ -15,6 +15,7 @@
   "reports": [
     {
       "id": "sales-performance",
+      "type": "standalone",
       "name": "Sales performance",
       "description": "Revenue trend, top customers by volume, invoice status breakdown — rolling 6 months. Use when user asks about sales, revenue, customers, or invoices.",
       "tags": ["sales", "revenue", "invoices", "customers"],
@@ -38,6 +39,7 @@
     },
     {
       "id": "ar-aging",
+      "type": "standalone",
       "name": "AR aging",
       "description": "Accounts receivable split into aging buckets: current, 1-30, 31-60, 61-90, 90+ days overdue. Use when user asks about aging, collections, overdue, or cash flow.",
       "tags": ["ar", "aging", "receivables", "overdue", "collections", "cash flow"],
@@ -62,6 +64,7 @@
     },
     {
       "id": "inventory-levels",
+      "type": "standalone",
       "name": "Inventory levels",
       "description": "Stock on hand by item and warehouse, reorder alerts for items below MinLevel, slow movers. Use when user asks about stock, inventory, warehouse, or items.",
       "tags": ["inventory", "stock", "warehouse", "items", "reorder"],
@@ -84,6 +87,7 @@
     },
     {
       "id": "purchase-spend",
+      "type": "standalone",
       "name": "Purchase & vendor spend",
       "description": "PO volume and vendor spend breakdown for the last 6 months. Use when user asks about purchasing, vendors, POs, or procurement.",
       "tags": ["purchasing", "vendors", "po", "spend", "procurement"],
@@ -106,6 +110,7 @@
     },
     {
       "id": "open-sales-orders",
+      "type": "standalone",
       "name": "Open sales orders",
       "description": "Delivery backlog showing open sales orders, days late, and fulfillment priority. Use when user asks about open orders, backlog, deliveries, fulfillment, or shipping.",
       "tags": ["orders", "backlog", "delivery", "fulfillment", "sales orders", "shipping"],
@@ -130,6 +135,7 @@
     },
     {
       "id": "ap-payment-schedule",
+      "type": "standalone",
       "name": "AP payment schedule",
       "description": "Vendor invoices coming due in the next 7, 14, and 30 days, plus overdue items. Use when user asks about accounts payable, payments due, vendor invoices, cash outflow, or what to pay.",
       "tags": ["ap", "payable", "payments", "vendors", "cash outflow", "due"],
@@ -154,6 +160,7 @@
     },
     {
       "id": "credit-limit-exposure",
+      "type": "standalone",
       "name": "Credit limit exposure",
       "description": "Customers approaching or exceeding their credit limit. Shows exposure (AR balance + open orders + open deliveries) vs CreditLimit. Use when user asks about credit limits, exposure, credit risk, or order holds.",
       "tags": ["credit", "limit", "exposure", "risk", "holds", "credit check"],
@@ -178,6 +185,7 @@
     },
     {
       "id": "gross-margin",
+      "type": "standalone",
       "name": "Gross margin by customer",
       "description": "Customer profitability analysis showing revenue, cost, gross profit and margin %. Flags customers below margin threshold. Use when user asks about margins, profitability, cost analysis, or pricing.",
       "tags": ["margin", "profitability", "gross profit", "cost", "pricing"],
@@ -198,6 +206,7 @@
     },
     {
       "id": "quotation-pipeline",
+      "type": "standalone",
       "name": "Quotation pipeline",
       "description": "Open quotations not yet converted to orders, with age in days, expiry tracking, and pipeline value. Use when user asks about quotes, quotations, pipeline, proposals, or sales funnel.",
       "tags": ["quotations", "quotes", "pipeline", "proposals", "sales funnel"],
@@ -222,6 +231,7 @@
     },
     {
       "id": "returns-credit-notes",
+      "type": "standalone",
       "name": "Returns & credit notes",
       "description": "AR credit notes issued in the last 6 months, grouped by customer and month. Shows return trends and repeat offenders. Use when user asks about returns, credit notes, refunds, or quality issues.",
       "tags": ["returns", "credit notes", "refunds", "quality", "credits"],
@@ -245,6 +255,7 @@
     },
     {
       "id": "slow-moving-inventory",
+      "type": "standalone",
       "name": "Slow-moving inventory",
       "description": "Items with stock on hand but zero or near-zero sales activity in the last 90+ days. Shows tied-up capital and dead stock. Use when user asks about slow movers, dead stock, idle inventory, or stock liquidation.",
       "tags": ["slow moving", "dead stock", "idle", "inventory", "liquidation", "write-off"],
