@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Credit Limit Exposure · B1 Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f0f2f7;
+  --surface:  #ffffff;
+  --border:   rgba(0,0,0,0.08);
+  --text:     #1a1d2e;
+  --muted:    #6b7280;
+  --blue:     #2563eb;
+  --green:    #059669;
+  --amber:    #d97706;
+  --red:      #dc2626;
+  --font:     'DM Sans', sans-serif;
+  --mono:     'DM Mono', monospace;
+}
+
+body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; padding: 20px; min-height: 100vh; }
+
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.header-left h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.4px; }
+.header-left .meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; }
+.header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; padding: 3px 9px; border-radius: 4px; border: 1px solid; white-space: nowrap; }
+.badge-demo { color: var(--amber); background: rgba(217,119,6,0.08); border-color: rgba(217,119,6,0.25); }
+.badge-live { color: var(--green); background: rgba(5,150,105,0.08); border-color: rgba(5,150,105,0.25); }
+.company-tag { font-family: var(--mono); font-size: 10px; color: var(--muted); background: rgba(0,0,0,0.04); border: 1px solid var(--border); padding: 3px 9px; border-radius: 4px; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; position: relative; overflow: hidden; }
+.kpi::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 8px 8px 0 0; }
+.kpi-blue::after  { background: var(--blue); }
+.kpi-green::after { background: var(--green); }
+.kpi-amber::after { background: var(--amber); }
+.kpi-red::after   { background: var(--red); }
+.kpi-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+.kpi-value { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; color: var(--text); line-height: 1; margin-bottom: 6px; }
+.kpi-delta { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.kpi-delta.up   { color: var(--green); }
+.kpi-delta.down { color: var(--red); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.card-title { font-size: 12px; font-weight: 500; }
+.card-hint { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.warning-banner { display: none; align-items: center; gap: 8px; background: rgba(220,38,38,0.06); border: 1px solid rgba(220,38,38,0.2); border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-family: var(--mono); font-size: 11px; color: var(--red); }
+.warning-banner.visible { display: flex; }
+
+.chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+table { width: 100%; border-collapse: collapse; }
+thead th { font-family: var(--mono); font-size: 10px; font-weight: 400; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; text-align: left; padding: 0 10px 10px 0; border-bottom: 1px solid var(--border); }
+thead th.r { text-align: right; padding-right: 0; }
+tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(0,0,0,0.03); }
+tbody td { padding: 9px 10px 9px 0; font-size: 12px; color: var(--text); vertical-align: middle; }
+tbody td.r { text-align: right; padding-right: 0; }
+tbody td.mono { font-family: var(--mono); }
+tbody td.muted { color: var(--muted); }
+
+.row-primary   { font-weight: 500; }
+.row-secondary { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-green { background: var(--green); }
+.dot-amber { background: var(--amber); }
+.dot-red   { background: var(--red); }
+
+.bar-wrap { display: flex; align-items: center; gap: 8px; }
+.bar-track { flex: 1; height: 4px; background: rgba(0,0,0,0.07); border-radius: 2px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 2px; }
+
+.link-cell a { color: var(--blue); text-decoration: none; font-family: var(--mono); font-size: 11px; opacity: 0.7; transition: opacity 0.15s; }
+.link-cell a:hover { opacity: 1; text-decoration: underline; }
+
+.footer { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; margin-top: 4px; border-top: 1px solid var(--border); }
+.footer span { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.empty { text-align: center; padding: 32px; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+
+@media (max-width: 640px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } .chart-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1 id="rpt-title">Credit Limit Exposure</h1>
+    <div class="meta" id="rpt-meta">Waiting for data…</div>
+  </div>
+  <div class="header-right">
+    <span class="badge badge-demo" id="rpt-badge">● Demo</span>
+    <span class="company-tag" id="rpt-company">—</span>
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi kpi-blue">
+    <div class="kpi-label">Total Exposure</div>
+    <div class="kpi-value" id="kpi-1">—</div>
+    <div class="kpi-delta" id="kpi-1-d"></div>
+  </div>
+  <div class="kpi kpi-red">
+    <div class="kpi-label">Over Limit</div>
+    <div class="kpi-value" id="kpi-2">—</div>
+    <div class="kpi-delta" id="kpi-2-d"></div>
+  </div>
+  <div class="kpi kpi-amber">
+    <div class="kpi-label">Above 80%</div>
+    <div class="kpi-value" id="kpi-3">—</div>
+    <div class="kpi-delta" id="kpi-3-d"></div>
+  </div>
+  <div class="kpi kpi-green">
+    <div class="kpi-label">Customers Checked</div>
+    <div class="kpi-value" id="kpi-4">—</div>
+    <div class="kpi-delta" id="kpi-4-d"></div>
+  </div>
+</div>
+
+<div class="warning-banner" id="warning-overlimit">
+  ⚠ Customers over credit limit — hold orders or adjust limits
+</div>
+
+<div class="chart-row">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Exposure vs Limit</span>
+      <span class="card-hint">OCRD · top 10 customers by utilization</span>
+    </div>
+    <canvas id="chart-exposure" height="220"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Risk Distribution</span>
+      <span class="card-hint">by customer count</span>
+    </div>
+    <canvas id="chart-risk" height="220"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Customer Credit Detail</span>
+    <span class="card-hint">OCRD · sorted by utilization % descending</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Customer</th>
+        <th class="r">Credit Limit</th>
+        <th class="r">Exposure</th>
+        <th class="r">Headroom</th>
+        <th>Utilization</th>
+        <th>Risk</th>
+        <th class="r">Open in SAP</th>
+      </tr>
+    </thead>
+    <tbody id="tbl-body">
+      <tr><td colspan="7" class="empty">Waiting for data…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <span id="rpt-ts">—</span>
+  <span id="rpt-sl">SAP Business One · Service Layer</span>
+</div>
+
+<script>
+window.B1Report = {
+
+  meta: {
+    id:          "credit-limit-exposure",
+    name:        "Credit limit exposure",
+    description: "Customers approaching or exceeding their credit limit. Shows exposure (AR balance + open orders + open deliveries) vs CreditLimit. Use when user asks about credit limits, exposure, credit risk, or order holds.",
+    tags:        ["credit", "limit", "exposure", "risk", "holds"],
+    queries:     ["customers"]
+  },
+
+  _charts: {},
+
+  load(data) {
+    const customers = data.customers || [];
+    const base      = data.webClientBase || '';
+    const links     = data.webClientLinks || {};
+    const company   = data.company || '—';
+
+    const isDemo = !window.__B1_AGENT_CONTROLLED__;
+    document.getElementById('rpt-company').textContent = company;
+    document.getElementById('rpt-badge').textContent   = isDemo ? '● Demo' : '● Live';
+    document.getElementById('rpt-badge').className     = 'badge ' + (isDemo ? 'badge-demo' : 'badge-live');
+    document.getElementById('rpt-meta').textContent    =
+      `${customers.length} customers with credit limits · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
+    document.getElementById('rpt-ts').textContent =
+      'Generated: ' + new Date().toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' });
+
+    const fmtK = n => {
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+      return n.toLocaleString('da-DK');
+    };
+
+    const enriched = customers.map(c => {
+      const limit    = c.CreditLimit || 0;
+      const exposure = (c.CurrentAccountBalance || 0) + (c.OpenOrdersBalance || 0) + (c.OpenDeliveryNotesBalance || 0);
+      const headroom = limit - exposure;
+      const pct      = limit > 0 ? Math.round((exposure / limit) * 100) : 0;
+      let risk;
+      if (pct >= 100)    risk = { key: 'over',   label: 'Over limit', dot: 'dot-red' };
+      else if (pct >= 80) risk = { key: 'high',   label: 'High',       dot: 'dot-amber' };
+      else                risk = { key: 'ok',     label: 'OK',         dot: 'dot-green' };
+      return { ...c, _exposure: exposure, _headroom: headroom, _pct: pct, _risk: risk };
+    });
+
+    const totalExposure = enriched.reduce((s, c) => s + c._exposure, 0);
+    const overLimit     = enriched.filter(c => c._risk.key === 'over').length;
+    const above80       = enriched.filter(c => c._risk.key === 'high').length;
+
+    document.getElementById('kpi-1').textContent = fmtK(totalExposure);
+    document.getElementById('kpi-2').textContent = overLimit;
+    document.getElementById('kpi-3').textContent = above80;
+    document.getElementById('kpi-4').textContent = customers.length;
+
+    const setDelta = (id, text, cls) => {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'kpi-delta ' + (cls || '');
+    };
+    setDelta('kpi-1-d', 'AR + orders + deliveries');
+    setDelta('kpi-2-d', overLimit > 0 ? '↑ Hold orders' : '✓ None', overLimit > 0 ? 'down' : 'up');
+    setDelta('kpi-3-d', above80 > 0 ? '↑ Monitor closely' : '✓ None', above80 > 0 ? 'down' : 'up');
+    setDelta('kpi-4-d', 'with credit limits set');
+
+    const warningEl = document.getElementById('warning-overlimit');
+    if (overLimit > 0) {
+      warningEl.textContent = `⚠ ${overLimit} customer${overLimit !== 1 ? 's' : ''} over credit limit — hold orders or adjust limits`;
+      warningEl.classList.add('visible');
+    } else warningEl.classList.remove('visible');
+
+    // Exposure vs limit chart
+    const topByPct = [...enriched].sort((a, b) => b._pct - a._pct).slice(0, 10);
+
+    if (this._charts.exposure) this._charts.exposure.destroy();
+    this._charts.exposure = new Chart(
+      document.getElementById('chart-exposure').getContext('2d'),
+      {
+        type: 'bar',
+        data: {
+          labels: topByPct.map(c => c.CardName?.length > 16 ? c.CardName.slice(0, 15) + '…' : (c.CardName || c.CardCode)),
+          datasets: [
+            { label: 'Exposure', data: topByPct.map(c => c._exposure), backgroundColor: topByPct.map(c => c._risk.key === 'over' ? 'rgba(220,38,38,0.8)' : c._risk.key === 'high' ? 'rgba(217,119,6,0.8)' : 'rgba(37,99,235,0.6)'), borderRadius: 3, borderWidth: 0 },
+            { label: 'Limit', data: topByPct.map(c => c.CreditLimit || 0), backgroundColor: 'rgba(0,0,0,0.08)', borderRadius: 3, borderWidth: 0 }
+          ]
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { position: 'bottom', labels: { color: '#6b7280', font: { family: "'DM Mono'", size: 10 }, boxWidth: 8, boxHeight: 8, padding: 10, usePointStyle: true, pointStyleWidth: 8 } }, tooltip: B1Report._tooltipDefaults() },
+          scales: {
+            x: { stacked: false, grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false }, border: { display: false, dash: [3,3] }, ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 4 } },
+            y: { stacked: false, grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } }
+          }
+        }
+      }
+    );
+
+    // Risk donut
+    const okCount   = enriched.filter(c => c._risk.key === 'ok').length;
+    const highCount = enriched.filter(c => c._risk.key === 'high').length;
+    const overCount = enriched.filter(c => c._risk.key === 'over').length;
+
+    if (this._charts.risk) this._charts.risk.destroy();
+    this._charts.risk = new Chart(
+      document.getElementById('chart-risk').getContext('2d'),
+      {
+        type: 'doughnut',
+        data: {
+          labels: ['OK (<80%)', 'High (80-99%)', 'Over Limit'],
+          datasets: [{ data: [okCount, highCount, overCount], backgroundColor: ['rgba(5,150,105,0.85)', 'rgba(217,119,6,0.85)', 'rgba(220,38,38,0.85)'], borderColor: '#ffffff', borderWidth: 3, hoverOffset: 4 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true, cutout: '68%',
+          plugins: { legend: { position: 'bottom', labels: { color: '#6b7280', font: { family: "'DM Mono'", size: 10 }, boxWidth: 8, boxHeight: 8, padding: 10, usePointStyle: true, pointStyleWidth: 8 } }, tooltip: B1Report._tooltipDefaults() }
+        }
+      }
+    );
+
+    // Table
+    const tbody = document.getElementById('tbl-body');
+    tbody.innerHTML = '';
+    if (!enriched.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">No customers with credit limits found</td></tr>'; return; }
+
+    const sorted = [...enriched].sort((a, b) => b._pct - a._pct);
+
+    sorted.forEach(c => {
+      const link = (base && links.customer && c.CardCode)
+        ? base + links.customer.replace('{CardCode}', c.CardCode) : '';
+
+      const barColor = c._risk.key === 'over' ? 'var(--red)' : c._risk.key === 'high' ? 'var(--amber)' : 'var(--blue)';
+
+      const tr = document.createElement('tr');
+      tr.onclick = () => { if (link) window.open(link, '_blank'); };
+      tr.innerHTML = `
+        <td><div class="row-primary">${c.CardName || '—'}</div><div class="row-secondary">${c.CardCode || ''}</div></td>
+        <td class="r mono muted">${fmtK(c.CreditLimit || 0)}</td>
+        <td class="r mono">${fmtK(c._exposure)}</td>
+        <td class="r mono ${c._headroom < 0 ? '' : 'muted'}" ${c._headroom < 0 ? 'style="color:var(--red);font-weight:500"' : ''}>${fmtK(c._headroom)}</td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.min(c._pct, 100)}%;background:${barColor}"></div></div>
+            <span class="mono muted" style="font-size:10px;min-width:30px;text-align:right">${c._pct}%</span>
+          </div>
+        </td>
+        <td><span class="pill"><span class="dot ${c._risk.dot}"></span>${c._risk.label}</span></td>
+        <td class="r link-cell">${link ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  },
+
+  _tooltipDefaults(currency) {
+    return { backgroundColor: '#ffffff', borderColor: 'rgba(0,0,0,0.12)', borderWidth: 1, titleColor: '#6b7280', bodyColor: '#1a1d2e', titleFont: { family: "'DM Mono'", size: 10 }, bodyFont: { family: "'DM Mono'", size: 12 }, callbacks: currency ? { label: ctx => ' ' + ctx.raw.toLocaleString('da-DK') + ' ' + currency } : undefined };
+  },
+  _tickDefaults() { return { color: '#6b7280', font: { family: "'DM Mono'", size: 10 } }; }
+};
+
+(function demoIfStandalone() {
+  if (window.__B1_AGENT_CONTROLLED__) return;
+  const MOCK = {
+    customers: [
+      { CardCode:"C0042", CardName:"Novo Industri A/S",   CreditLimit:500000,  CurrentAccountBalance:420000, OpenOrdersBalance:95000,  OpenDeliveryNotesBalance:12000 },
+      { CardCode:"C0017", CardName:"Danfoss Group",       CreditLimit:300000,  CurrentAccountBalance:180000, OpenOrdersBalance:110000, OpenDeliveryNotesBalance:35000 },
+      { CardCode:"C0088", CardName:"Vestas Wind Systems",  CreditLimit:250000,  CurrentAccountBalance:145000, OpenOrdersBalance:62000,  OpenDeliveryNotesBalance:8000 },
+      { CardCode:"C0055", CardName:"DSV Panalpina A/S",   CreditLimit:200000,  CurrentAccountBalance:95000,  OpenOrdersBalance:45000,  OpenDeliveryNotesBalance:0 },
+      { CardCode:"C0031", CardName:"Arla Foods amba",     CreditLimit:150000,  CurrentAccountBalance:88000,  OpenOrdersBalance:22000,  OpenDeliveryNotesBalance:5000 },
+      { CardCode:"C0099", CardName:"Ørsted A/S",          CreditLimit:400000,  CurrentAccountBalance:120000, OpenOrdersBalance:80000,  OpenDeliveryNotesBalance:18000 },
+      { CardCode:"C0063", CardName:"Coloplast A/S",       CreditLimit:180000,  CurrentAccountBalance:45000,  OpenOrdersBalance:30000,  OpenDeliveryNotesBalance:0 },
+      { CardCode:"C0077", CardName:"Carlsberg A/S",       CreditLimit:350000,  CurrentAccountBalance:210000, OpenOrdersBalance:75000,  OpenDeliveryNotesBalance:20000 },
+    ],
+    company: "CRONUS_DK (demo)",
+    webClientBase: "",
+    webClientLinks: { customer: "/webapp/index.html#/OCRD/{CardCode}" }
+  };
+  window.B1Report.load(MOCK);
+})();
+</script>
+</body>
+</html>

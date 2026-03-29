@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AP Payment Schedule · B1 Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f0f2f7;
+  --surface:  #ffffff;
+  --border:   rgba(0,0,0,0.08);
+  --text:     #1a1d2e;
+  --muted:    #6b7280;
+  --blue:     #2563eb;
+  --green:    #059669;
+  --amber:    #d97706;
+  --red:      #dc2626;
+  --font:     'DM Sans', sans-serif;
+  --mono:     'DM Mono', monospace;
+}
+
+body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; padding: 20px; min-height: 100vh; }
+
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.header-left h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.4px; color: var(--text); }
+.header-left .meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; }
+.header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; padding: 3px 9px; border-radius: 4px; border: 1px solid; white-space: nowrap; }
+.badge-demo { color: var(--amber); background: rgba(217,119,6,0.08); border-color: rgba(217,119,6,0.25); }
+.badge-live { color: var(--green); background: rgba(5,150,105,0.08); border-color: rgba(5,150,105,0.25); }
+.company-tag { font-family: var(--mono); font-size: 10px; color: var(--muted); background: rgba(0,0,0,0.04); border: 1px solid var(--border); padding: 3px 9px; border-radius: 4px; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; position: relative; overflow: hidden; }
+.kpi::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 8px 8px 0 0; }
+.kpi-blue::after  { background: var(--blue); }
+.kpi-green::after { background: var(--green); }
+.kpi-amber::after { background: var(--amber); }
+.kpi-red::after   { background: var(--red); }
+.kpi-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+.kpi-value { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; color: var(--text); line-height: 1; margin-bottom: 6px; }
+.kpi-delta { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.kpi-delta.up   { color: var(--green); }
+.kpi-delta.down { color: var(--red); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.card-title { font-size: 12px; font-weight: 500; color: var(--text); }
+.card-hint { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+table { width: 100%; border-collapse: collapse; }
+thead th { font-family: var(--mono); font-size: 10px; font-weight: 400; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; text-align: left; padding: 0 10px 10px 0; border-bottom: 1px solid var(--border); }
+thead th.r { text-align: right; padding-right: 0; }
+tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(0,0,0,0.03); }
+tbody td { padding: 9px 10px 9px 0; font-size: 12px; color: var(--text); vertical-align: middle; }
+tbody td.r { text-align: right; padding-right: 0; }
+tbody td.mono { font-family: var(--mono); }
+tbody td.muted { color: var(--muted); }
+
+.row-primary   { font-weight: 500; color: var(--text); }
+.row-secondary { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-green { background: var(--green); }
+.dot-amber { background: var(--amber); }
+.dot-red   { background: var(--red); }
+.dot-blue  { background: var(--blue); }
+
+.link-cell a { color: var(--blue); text-decoration: none; font-family: var(--mono); font-size: 11px; opacity: 0.7; transition: opacity 0.15s; }
+.link-cell a:hover { opacity: 1; text-decoration: underline; }
+
+.footer { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; margin-top: 4px; border-top: 1px solid var(--border); }
+.footer span { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.empty { text-align: center; padding: 32px; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+
+@media (max-width: 640px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } .chart-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1 id="rpt-title">AP Payment Schedule</h1>
+    <div class="meta" id="rpt-meta">Waiting for data…</div>
+  </div>
+  <div class="header-right">
+    <span class="badge badge-demo" id="rpt-badge">● Demo</span>
+    <span class="company-tag" id="rpt-company">—</span>
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi kpi-blue">
+    <div class="kpi-label">Total Payable</div>
+    <div class="kpi-value" id="kpi-1">—</div>
+    <div class="kpi-delta" id="kpi-1-d"></div>
+  </div>
+  <div class="kpi kpi-red">
+    <div class="kpi-label">Due This Week</div>
+    <div class="kpi-value" id="kpi-2">—</div>
+    <div class="kpi-delta" id="kpi-2-d"></div>
+  </div>
+  <div class="kpi kpi-amber">
+    <div class="kpi-label">Due This Month</div>
+    <div class="kpi-value" id="kpi-3">—</div>
+    <div class="kpi-delta" id="kpi-3-d"></div>
+  </div>
+  <div class="kpi kpi-red">
+    <div class="kpi-label">Already Overdue</div>
+    <div class="kpi-value" id="kpi-4">—</div>
+    <div class="kpi-delta" id="kpi-4-d"></div>
+  </div>
+</div>
+
+<div class="chart-row">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Cash Outflow Timeline</span>
+      <span class="card-hint">OPCH."DocDueDate" · outstanding balance by week</span>
+    </div>
+    <canvas id="chart-timeline" height="140"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Top Vendors by Payable</span>
+      <span class="card-hint">by outstanding balance · top 6</span>
+    </div>
+    <canvas id="chart-vendors" height="140"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Open AP Invoices</span>
+    <span class="card-hint">OPCH · sorted by due date ascending</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Vendor</th>
+        <th>Invoice #</th>
+        <th>Invoice Date</th>
+        <th>Due Date</th>
+        <th>Urgency</th>
+        <th class="r">Outstanding</th>
+        <th class="r">Open in SAP</th>
+      </tr>
+    </thead>
+    <tbody id="tbl-body">
+      <tr><td colspan="7" class="empty">Waiting for data…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <span id="rpt-ts">—</span>
+  <span id="rpt-sl">SAP Business One · Service Layer</span>
+</div>
+
+<script>
+window.B1Report = {
+
+  meta: {
+    id:          "ap-payment-schedule",
+    name:        "AP payment schedule",
+    description: "Vendor invoices coming due in the next 7, 14, and 30 days, plus overdue items. Use when user asks about accounts payable, payments due, vendor invoices, or cash outflow.",
+    tags:        ["ap", "payable", "payments", "vendors", "cash outflow", "due"],
+    queries:     ["apInvoices"]
+  },
+
+  _charts: {},
+
+  load(data) {
+    const apInvoices = data.apInvoices || [];
+    const base       = data.webClientBase || '';
+    const links      = data.webClientLinks || {};
+    const company    = data.company || '—';
+    const currency   = apInvoices[0]?.DocCurrency || 'DKK';
+    const today      = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const isDemo = !window.__B1_AGENT_CONTROLLED__;
+    document.getElementById('rpt-company').textContent = company;
+    document.getElementById('rpt-badge').textContent   = isDemo ? '● Demo' : '● Live';
+    document.getElementById('rpt-badge').className     = 'badge ' + (isDemo ? 'badge-demo' : 'badge-live');
+    document.getElementById('rpt-meta').textContent    =
+      `${apInvoices.length} open invoices · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
+    document.getElementById('rpt-ts').textContent =
+      'Generated: ' + new Date().toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' });
+
+    const fmtK = n => {
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+      return n.toLocaleString('da-DK');
+    };
+
+    const outstanding = r => Math.max(0, (r.DocTotal || 0) - (r.PaidToDate || 0));
+
+    const daysToDue = dueDateStr => {
+      if (!dueDateStr) return 999;
+      const [y, m, d] = dueDateStr.split('-').map(Number);
+      const due = new Date(y, m - 1, d);
+      return Math.floor((due - today) / 86400000);
+    };
+
+    const enriched = apInvoices.map(r => ({
+      ...r,
+      _outstanding: outstanding(r),
+      _daysToDue: daysToDue(r.DocDueDate)
+    }));
+
+    const totalPayable = enriched.reduce((s, r) => s + r._outstanding, 0);
+    const dueThisWeek  = enriched.filter(r => r._daysToDue >= 0 && r._daysToDue <= 7).reduce((s, r) => s + r._outstanding, 0);
+    const dueThisMonth = enriched.filter(r => r._daysToDue >= 0 && r._daysToDue <= 30).reduce((s, r) => s + r._outstanding, 0);
+    const overdue      = enriched.filter(r => r._daysToDue < 0).reduce((s, r) => s + r._outstanding, 0);
+
+    document.getElementById('kpi-1').textContent = fmtK(totalPayable);
+    document.getElementById('kpi-2').textContent = fmtK(dueThisWeek);
+    document.getElementById('kpi-3').textContent = fmtK(dueThisMonth);
+    document.getElementById('kpi-4').textContent = fmtK(overdue);
+
+    const setDelta = (id, text, cls) => {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'kpi-delta ' + (cls || '');
+    };
+    setDelta('kpi-1-d', currency);
+    setDelta('kpi-2-d', dueThisWeek > 0 ? '↑ Immediate attention' : '✓ Clear', dueThisWeek > 0 ? 'down' : 'up');
+    setDelta('kpi-3-d', currency);
+    setDelta('kpi-4-d', overdue > 0 ? '↑ Pay now' : '✓ None overdue', overdue > 0 ? 'down' : 'up');
+
+    // Cash outflow timeline
+    const weekBuckets = {};
+    enriched.forEach(r => {
+      const due = r.DocDueDate ? new Date(r.DocDueDate) : today;
+      const weekStart = new Date(due);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+      const k = weekStart.toISOString().slice(0, 10);
+      const label = `${weekStart.getDate()}/${weekStart.getMonth() + 1}`;
+      if (!weekBuckets[k]) weekBuckets[k] = { label, value: 0, sort: k, isPast: weekStart < today };
+      weekBuckets[k].value += r._outstanding;
+    });
+    const barData = Object.values(weekBuckets).sort((a, b) => a.sort.localeCompare(b.sort)).slice(-8);
+
+    if (this._charts.timeline) this._charts.timeline.destroy();
+    this._charts.timeline = new Chart(
+      document.getElementById('chart-timeline').getContext('2d'),
+      {
+        type: 'bar',
+        data: {
+          labels: barData.map(d => d.label),
+          datasets: [{
+            data: barData.map(d => d.value),
+            backgroundColor: barData.map(d => d.isPast ? 'rgba(220,38,38,0.75)' : 'rgba(37,99,235,0.35)'),
+            borderColor: barData.map(d => d.isPast ? 'rgba(220,38,38,1)' : 'rgba(37,99,235,0.6)'),
+            borderWidth: 1, borderRadius: 3
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { display: false }, tooltip: B1Report._tooltipDefaults(currency) },
+          scales: {
+            x: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } },
+            y: { grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false }, border: { display: false, dash: [3,3] }, ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 4 } }
+          }
+        }
+      }
+    );
+
+    // Top vendors
+    const vendorMap = {};
+    enriched.forEach(r => {
+      const k = r.CardCode || '—';
+      if (!vendorMap[k]) vendorMap[k] = { name: r.CardName || k, total: 0 };
+      vendorMap[k].total += r._outstanding;
+    });
+    const topVendors = Object.values(vendorMap).sort((a, b) => b.total - a.total).slice(0, 6);
+
+    if (this._charts.vendors) this._charts.vendors.destroy();
+    this._charts.vendors = new Chart(
+      document.getElementById('chart-vendors').getContext('2d'),
+      {
+        type: 'bar',
+        data: {
+          labels: topVendors.map(v => v.name.length > 18 ? v.name.slice(0, 17) + '…' : v.name),
+          datasets: [{
+            data: topVendors.map(v => v.total),
+            backgroundColor: 'rgba(37,99,235,0.75)',
+            borderColor: 'rgba(37,99,235,1)',
+            borderWidth: 1, borderRadius: 3
+          }]
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { display: false }, tooltip: B1Report._tooltipDefaults(currency) },
+          scales: {
+            x: { grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false }, border: { display: false, dash: [3,3] }, ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 3 } },
+            y: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } }
+          }
+        }
+      }
+    );
+
+    // Table
+    const tbody = document.getElementById('tbl-body');
+    tbody.innerHTML = '';
+    if (!enriched.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">No open AP invoices</td></tr>'; return; }
+
+    const sorted = [...enriched].sort((a, b) => a._daysToDue - b._daysToDue);
+
+    sorted.forEach(r => {
+      const link = (base && links.purchaseInvoice && r.DocEntry)
+        ? base + links.purchaseInvoice.replace('{DocEntry}', r.DocEntry) : '';
+
+      const fmtDate = s => s ? new Date(s).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+      let urgDot, urgText;
+      if (r._daysToDue < 0)       { urgDot = 'dot-red';   urgText = `${Math.abs(r._daysToDue)}d overdue`; }
+      else if (r._daysToDue <= 7) { urgDot = 'dot-amber'; urgText = `${r._daysToDue}d left`; }
+      else                        { urgDot = 'dot-green'; urgText = `${r._daysToDue}d left`; }
+
+      const tr = document.createElement('tr');
+      tr.onclick = () => { if (link) window.open(link, '_blank'); };
+      tr.innerHTML = `
+        <td><div class="row-primary">${r.CardName || '—'}</div><div class="row-secondary">${r.CardCode || ''}</div></td>
+        <td class="mono muted">${r.DocNum || '—'}</td>
+        <td class="mono muted">${fmtDate(r.DocDate)}</td>
+        <td class="mono muted">${fmtDate(r.DocDueDate)}</td>
+        <td><span class="pill"><span class="dot ${urgDot}"></span>${urgText}</span></td>
+        <td class="r mono">${r._outstanding.toLocaleString('da-DK')}</td>
+        <td class="r link-cell">${link ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  },
+
+  _tooltipDefaults(currency) {
+    return { backgroundColor: '#ffffff', borderColor: 'rgba(0,0,0,0.12)', borderWidth: 1, titleColor: '#6b7280', bodyColor: '#1a1d2e', titleFont: { family: "'DM Mono'", size: 10 }, bodyFont: { family: "'DM Mono'", size: 12 }, callbacks: currency ? { label: ctx => ' ' + ctx.raw.toLocaleString('da-DK') + ' ' + currency } : undefined };
+  },
+  _tickDefaults() { return { color: '#6b7280', font: { family: "'DM Mono'", size: 10 } }; }
+};
+
+(function demoIfStandalone() {
+  if (window.__B1_AGENT_CONTROLLED__) return;
+  const MOCK = {
+    apInvoices: [
+      { DocEntry:601, DocNum:8001, CardCode:"V0011", CardName:"Siemens DK A/S",       DocDate:"2026-02-15", DocDueDate:"2026-03-15", DocTotal:142000, PaidToDate:0,     DocCurrency:"DKK" },
+      { DocEntry:602, DocNum:8002, CardCode:"V0024", CardName:"ABB Electrification",   DocDate:"2026-02-20", DocDueDate:"2026-03-25", DocTotal:87500,  PaidToDate:0,     DocCurrency:"DKK" },
+      { DocEntry:603, DocNum:8003, CardCode:"V0037", CardName:"Festo A/S",             DocDate:"2026-03-01", DocDueDate:"2026-03-31", DocTotal:34200,  PaidToDate:0,     DocCurrency:"DKK" },
+      { DocEntry:604, DocNum:8004, CardCode:"V0052", CardName:"Parker Hannifin DK",    DocDate:"2026-03-05", DocDueDate:"2026-04-05", DocTotal:215000, PaidToDate:50000, DocCurrency:"DKK" },
+      { DocEntry:605, DocNum:8005, CardCode:"V0063", CardName:"Schneider Electric DK", DocDate:"2026-03-10", DocDueDate:"2026-04-10", DocTotal:178000, PaidToDate:0,     DocCurrency:"DKK" },
+      { DocEntry:606, DocNum:8006, CardCode:"V0077", CardName:"Bosch Rexroth DK",      DocDate:"2026-03-12", DocDueDate:"2026-04-12", DocTotal:65000,  PaidToDate:0,     DocCurrency:"DKK" },
+      { DocEntry:607, DocNum:8007, CardCode:"V0088", CardName:"Grundfos Pumps A/S",    DocDate:"2026-03-15", DocDueDate:"2026-04-15", DocTotal:145000, PaidToDate:0,     DocCurrency:"DKK" },
+      { DocEntry:608, DocNum:8008, CardCode:"V0099", CardName:"Danfoss Drives A/S",    DocDate:"2026-03-18", DocDueDate:"2026-04-18", DocTotal:98000,  PaidToDate:0,     DocCurrency:"DKK" },
+      { DocEntry:609, DocNum:8009, CardCode:"V0011", CardName:"Siemens DK A/S",        DocDate:"2026-01-10", DocDueDate:"2026-02-10", DocTotal:196000, PaidToDate:0,     DocCurrency:"DKK" },
+      { DocEntry:610, DocNum:8010, CardCode:"V0052", CardName:"Parker Hannifin DK",    DocDate:"2026-02-01", DocDueDate:"2026-03-01", DocTotal:112000, PaidToDate:0,     DocCurrency:"DKK" },
+    ],
+    company: "CRONUS_DK (demo)",
+    webClientBase: "",
+    webClientLinks: { purchaseInvoice: "/webapp/index.html#/OPCH/{DocEntry}" }
+  };
+  window.B1Report.load(MOCK);
+})();
+</script>
+</body>
+</html>

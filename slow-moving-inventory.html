@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slow-Moving Inventory · B1 Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f0f2f7;
+  --surface:  #ffffff;
+  --border:   rgba(0,0,0,0.08);
+  --text:     #1a1d2e;
+  --muted:    #6b7280;
+  --blue:     #2563eb;
+  --green:    #059669;
+  --amber:    #d97706;
+  --red:      #dc2626;
+  --font:     'DM Sans', sans-serif;
+  --mono:     'DM Mono', monospace;
+}
+
+body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; padding: 20px; min-height: 100vh; }
+
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.header-left h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.4px; }
+.header-left .meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; }
+.header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; padding: 3px 9px; border-radius: 4px; border: 1px solid; white-space: nowrap; }
+.badge-demo { color: var(--amber); background: rgba(217,119,6,0.08); border-color: rgba(217,119,6,0.25); }
+.badge-live { color: var(--green); background: rgba(5,150,105,0.08); border-color: rgba(5,150,105,0.25); }
+.company-tag { font-family: var(--mono); font-size: 10px; color: var(--muted); background: rgba(0,0,0,0.04); border: 1px solid var(--border); padding: 3px 9px; border-radius: 4px; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; position: relative; overflow: hidden; }
+.kpi::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 8px 8px 0 0; }
+.kpi-blue::after  { background: var(--blue); }
+.kpi-green::after { background: var(--green); }
+.kpi-amber::after { background: var(--amber); }
+.kpi-red::after   { background: var(--red); }
+.kpi-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+.kpi-value { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; color: var(--text); line-height: 1; margin-bottom: 6px; }
+.kpi-delta { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.kpi-delta.up   { color: var(--green); }
+.kpi-delta.down { color: var(--red); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.card-title { font-size: 12px; font-weight: 500; }
+.card-hint { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.warning-banner { display: none; align-items: center; gap: 8px; background: rgba(217,119,6,0.07); border: 1px solid rgba(217,119,6,0.2); border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-family: var(--mono); font-size: 11px; color: var(--amber); }
+.warning-banner.visible { display: flex; }
+
+.chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+table { width: 100%; border-collapse: collapse; }
+thead th { font-family: var(--mono); font-size: 10px; font-weight: 400; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; text-align: left; padding: 0 10px 10px 0; border-bottom: 1px solid var(--border); }
+thead th.r { text-align: right; padding-right: 0; }
+tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(0,0,0,0.03); }
+tbody td { padding: 9px 10px 9px 0; font-size: 12px; color: var(--text); vertical-align: middle; }
+tbody td.r { text-align: right; padding-right: 0; }
+tbody td.mono { font-family: var(--mono); }
+tbody td.muted { color: var(--muted); }
+
+.row-primary   { font-weight: 500; }
+.row-secondary { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-green { background: var(--green); }
+.dot-amber { background: var(--amber); }
+.dot-red   { background: var(--red); }
+
+.link-cell a { color: var(--blue); text-decoration: none; font-family: var(--mono); font-size: 11px; opacity: 0.7; transition: opacity 0.15s; }
+.link-cell a:hover { opacity: 1; text-decoration: underline; }
+
+.footer { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; margin-top: 4px; border-top: 1px solid var(--border); }
+.footer span { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.empty { text-align: center; padding: 32px; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+
+@media (max-width: 640px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } .chart-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1 id="rpt-title">Slow-Moving Inventory</h1>
+    <div class="meta" id="rpt-meta">Waiting for data…</div>
+  </div>
+  <div class="header-right">
+    <span class="badge badge-demo" id="rpt-badge">● Demo</span>
+    <span class="company-tag" id="rpt-company">—</span>
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi kpi-red">
+    <div class="kpi-label">Tied-Up Capital</div>
+    <div class="kpi-value" id="kpi-1">—</div>
+    <div class="kpi-delta" id="kpi-1-d"></div>
+  </div>
+  <div class="kpi kpi-amber">
+    <div class="kpi-label">Slow Items</div>
+    <div class="kpi-value" id="kpi-2">—</div>
+    <div class="kpi-delta" id="kpi-2-d"></div>
+  </div>
+  <div class="kpi kpi-red">
+    <div class="kpi-label">No Movement (180d+)</div>
+    <div class="kpi-value" id="kpi-3">—</div>
+    <div class="kpi-delta" id="kpi-3-d"></div>
+  </div>
+  <div class="kpi kpi-blue">
+    <div class="kpi-label">Longest Idle</div>
+    <div class="kpi-value" id="kpi-4">—</div>
+    <div class="kpi-delta" id="kpi-4-d"></div>
+  </div>
+</div>
+
+<div class="warning-banner" id="warning-dead">
+  ⚠ Dead stock tying up capital — consider liquidation or write-off
+</div>
+
+<div class="chart-row">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Tied-Up Capital by Idle Period</span>
+      <span class="card-hint">OITM/INV1 · OnHand × AvgPrice</span>
+    </div>
+    <canvas id="chart-capital" height="140"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Movement Status</span>
+      <span class="card-hint">by item count</span>
+    </div>
+    <canvas id="chart-status" height="140"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Slow-Moving Items</span>
+    <span class="card-hint">OITM · sorted by days since last sale ascending</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th class="r">On Hand</th>
+        <th class="r">Stock Value</th>
+        <th class="r">Last Sale</th>
+        <th class="r">Days Idle</th>
+        <th>Status</th>
+        <th class="r">Open in SAP</th>
+      </tr>
+    </thead>
+    <tbody id="tbl-body">
+      <tr><td colspan="7" class="empty">Waiting for data…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <span id="rpt-ts">—</span>
+  <span id="rpt-sl">SAP Business One · Service Layer</span>
+</div>
+
+<script>
+window.B1Report = {
+
+  meta: {
+    id:          "slow-moving-inventory",
+    name:        "Slow-moving inventory",
+    description: "Items with stock on hand but zero or near-zero sales activity in the last 90+ days. Shows tied-up capital and dead stock. Use when user asks about slow movers, dead stock, idle inventory, or stock liquidation.",
+    tags:        ["slow moving", "dead stock", "idle", "inventory", "liquidation", "write-off"],
+    queries:     ["slowItems"]
+  },
+
+  _charts: {},
+
+  load(data) {
+    const slowItems = data.slowItems || [];
+    const base      = data.webClientBase || '';
+    const links     = data.webClientLinks || {};
+    const company   = data.company || '—';
+    const today     = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const isDemo = !window.__B1_AGENT_CONTROLLED__;
+    document.getElementById('rpt-company').textContent = company;
+    document.getElementById('rpt-badge').textContent   = isDemo ? '● Demo' : '● Live';
+    document.getElementById('rpt-badge').className     = 'badge ' + (isDemo ? 'badge-demo' : 'badge-live');
+    document.getElementById('rpt-meta').textContent    =
+      `${slowItems.length} slow-moving items · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
+    document.getElementById('rpt-ts').textContent =
+      'Generated: ' + new Date().toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' });
+
+    const fmtK = n => {
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+      return n.toLocaleString('da-DK');
+    };
+
+    const enriched = slowItems.map(r => {
+      const onHand     = r.OnHand || r.QuantityOnHand || 0;
+      const price      = r.AvgPrice || r.LastPurchasePrice || 0;
+      const stockValue = onHand * price;
+      const lastSaleDate = r.LastSaleDate || null;
+      const daysIdle   = lastSaleDate
+        ? Math.max(0, Math.floor((today - new Date(lastSaleDate)) / 86400000))
+        : 999;
+
+      let status;
+      if (daysIdle >= 180 || !lastSaleDate) status = { key: 'dead',  label: 'Dead stock', dot: 'dot-red' };
+      else if (daysIdle >= 90)              status = { key: 'slow',  label: 'Slow',       dot: 'dot-amber' };
+      else                                  status = { key: 'watch', label: 'Watch',      dot: 'dot-blue' };
+
+      return { ...r, _onHand: onHand, _stockValue: stockValue, _lastSaleDate: lastSaleDate, _daysIdle: daysIdle, _status: status };
+    });
+
+    const tiedUpCapital  = enriched.reduce((s, r) => s + r._stockValue, 0);
+    const deadItems      = enriched.filter(r => r._status.key === 'dead').length;
+    const longestIdle    = enriched.reduce((max, r) => Math.max(max, r._daysIdle === 999 ? 0 : r._daysIdle), 0);
+    const longestNever   = enriched.some(r => r._daysIdle === 999);
+
+    document.getElementById('kpi-1').textContent = fmtK(tiedUpCapital);
+    document.getElementById('kpi-2').textContent = slowItems.length;
+    document.getElementById('kpi-3').textContent = deadItems;
+    document.getElementById('kpi-4').textContent = longestNever ? 'Never sold' : longestIdle + 'd';
+
+    const setDelta = (id, text, cls) => { const el = document.getElementById(id); el.textContent = text; el.className = 'kpi-delta ' + (cls || ''); };
+    setDelta('kpi-1-d', 'in slow/dead stock');
+    setDelta('kpi-2-d', '90+ days without sale');
+    setDelta('kpi-3-d', deadItems > 0 ? '↑ Liquidate or write off' : '✓ None', deadItems > 0 ? 'down' : 'up');
+    setDelta('kpi-4-d', longestNever ? 'never transacted' : 'days since last sale');
+
+    const warningEl = document.getElementById('warning-dead');
+    if (deadItems > 0) {
+      const deadValue = enriched.filter(r => r._status.key === 'dead').reduce((s, r) => s + r._stockValue, 0);
+      warningEl.textContent = `⚠ ${deadItems} item${deadItems !== 1 ? 's' : ''} with no movement (180+ days) — ${fmtK(deadValue)} in tied-up capital — consider liquidation or write-off`;
+      warningEl.classList.add('visible');
+    } else warningEl.classList.remove('visible');
+
+    // Tied-up capital by idle period
+    const idleBuckets = [
+      { label: '90–120 days', min: 90,  max: 120 },
+      { label: '121–180 days', min: 121, max: 180 },
+      { label: '181–365 days', min: 181, max: 365 },
+      { label: '365+ / Never', min: 366, max: 9999 }
+    ];
+    const bucketData = idleBuckets.map(b => ({
+      label: b.label,
+      value: enriched.filter(r => r._daysIdle >= b.min && r._daysIdle <= b.max).reduce((s, r) => s + r._stockValue, 0)
+    }));
+    const bucketColors = ['rgba(37,99,235,0.70)', 'rgba(217,119,6,0.70)', 'rgba(220,38,38,0.60)', 'rgba(220,38,38,0.85)'];
+
+    if (this._charts.capital) this._charts.capital.destroy();
+    this._charts.capital = new Chart(
+      document.getElementById('chart-capital').getContext('2d'),
+      {
+        type: 'bar',
+        data: {
+          labels: bucketData.map(d => d.label),
+          datasets: [{ data: bucketData.map(d => d.value), backgroundColor: bucketColors, borderColor: bucketColors.map(c => c.replace(/0\.\d+\)/, '1)')), borderWidth: 1, borderRadius: 3 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { display: false }, tooltip: B1Report._tooltipDefaults() },
+          scales: {
+            x: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } },
+            y: { grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false }, border: { display: false, dash: [3,3] }, ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 4 } }
+          }
+        }
+      }
+    );
+
+    // Status donut
+    const watchCount = enriched.filter(r => r._status.key === 'watch').length;
+    const slowCount  = enriched.filter(r => r._status.key === 'slow').length;
+    const deadCount  = enriched.filter(r => r._status.key === 'dead').length;
+
+    if (this._charts.status) this._charts.status.destroy();
+    this._charts.status = new Chart(
+      document.getElementById('chart-status').getContext('2d'),
+      {
+        type: 'doughnut',
+        data: {
+          labels: ['Watch (60–89d)', 'Slow (90–179d)', 'Dead (180d+)'],
+          datasets: [{ data: [watchCount, slowCount, deadCount], backgroundColor: ['rgba(37,99,235,0.85)', 'rgba(217,119,6,0.85)', 'rgba(220,38,38,0.85)'], borderColor: '#ffffff', borderWidth: 3, hoverOffset: 4 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true, cutout: '68%',
+          plugins: { legend: { position: 'bottom', labels: { color: '#6b7280', font: { family: "'DM Mono'", size: 10 }, boxWidth: 8, boxHeight: 8, padding: 10, usePointStyle: true, pointStyleWidth: 8 } }, tooltip: B1Report._tooltipDefaults() }
+        }
+      }
+    );
+
+    // Table
+    const tbody = document.getElementById('tbl-body');
+    tbody.innerHTML = '';
+    if (!enriched.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">No slow-moving items found</td></tr>'; return; }
+
+    const sorted = [...enriched].sort((a, b) => b._daysIdle - a._daysIdle);
+
+    sorted.forEach(r => {
+      const link = (base && links.item && r.ItemCode)
+        ? base + links.item.replace('{ItemCode}', r.ItemCode) : '';
+      const fmtDate = s => s ? new Date(s).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Never';
+
+      const tr = document.createElement('tr');
+      tr.onclick = () => { if (link) window.open(link, '_blank'); };
+      tr.innerHTML = `
+        <td><div class="row-primary">${r.ItemName || r.ItemCode}</div><div class="row-secondary">${r.ItemCode}</div></td>
+        <td class="r mono">${r._onHand.toLocaleString('da-DK')}</td>
+        <td class="r mono">${fmtK(r._stockValue)}</td>
+        <td class="r mono muted">${fmtDate(r._lastSaleDate)}</td>
+        <td class="r mono" ${r._daysIdle >= 180 ? 'style="color:var(--red);font-weight:500"' : ''}>${r._daysIdle === 999 ? '—' : r._daysIdle}</td>
+        <td><span class="pill"><span class="dot ${r._status.dot}"></span>${r._status.label}</span></td>
+        <td class="r link-cell">${link ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  },
+
+  _tooltipDefaults(currency) { return { backgroundColor: '#ffffff', borderColor: 'rgba(0,0,0,0.12)', borderWidth: 1, titleColor: '#6b7280', bodyColor: '#1a1d2e', titleFont: { family: "'DM Mono'", size: 10 }, bodyFont: { family: "'DM Mono'", size: 12 }, callbacks: currency ? { label: ctx => ' ' + ctx.raw.toLocaleString('da-DK') + ' ' + currency } : undefined }; },
+  _tickDefaults() { return { color: '#6b7280', font: { family: "'DM Mono'", size: 10 } }; }
+};
+
+(function demoIfStandalone() {
+  if (window.__B1_AGENT_CONTROLLED__) return;
+  const MOCK = {
+    slowItems: [
+      { ItemCode:"ITM-0274", ItemName:"Flow Meter DN25 Ultrasonic",   OnHand:3,   AvgPrice:6400,  LastSaleDate:null },
+      { ItemCode:"ITM-0289", ItemName:"PLC Module Analog 4ch",        OnHand:5,   AvgPrice:2850,  LastSaleDate:"2025-06-15" },
+      { ItemCode:"ITM-0301", ItemName:"Flexible Conduit 25mm 50m",    OnHand:12,  AvgPrice:310,   LastSaleDate:"2025-07-20" },
+      { ItemCode:"ITM-0318", ItemName:"Thermocouple Type K 500mm",    OnHand:28,  AvgPrice:85,    LastSaleDate:"2025-08-10" },
+      { ItemCode:"ITM-0334", ItemName:"Servo Motor 1kW AC",           OnHand:2,   AvgPrice:4200,  LastSaleDate:"2025-05-01" },
+      { ItemCode:"ITM-0347", ItemName:"Linear Guide Rail 400mm",      OnHand:8,   AvgPrice:1100,  LastSaleDate:"2025-09-15" },
+      { ItemCode:"ITM-0362", ItemName:"Pressure Relief Valve DN32",   OnHand:4,   AvgPrice:780,   LastSaleDate:"2025-10-20" },
+      { ItemCode:"ITM-0375", ItemName:"Panel Meter Digital 4-20mA",   OnHand:15,  AvgPrice:340,   LastSaleDate:"2025-11-05" },
+      { ItemCode:"ITM-0389", ItemName:"Hydraulic Hose Assembly 2m",   OnHand:22,  AvgPrice:195,   LastSaleDate:"2025-12-01" },
+      { ItemCode:"ITM-0402", ItemName:"Vibration Sensor ICP 100mV/g", OnHand:6,   AvgPrice:1650,  LastSaleDate:null },
+      { ItemCode:"ITM-0418", ItemName:"Pneumatic Cylinder 63×200",    OnHand:4,   AvgPrice:920,   LastSaleDate:"2025-04-10" },
+      { ItemCode:"ITM-0431", ItemName:"Encoder Incremental 1024ppr",  OnHand:9,   AvgPrice:560,   LastSaleDate:"2025-12-15" },
+    ],
+    company: "CRONUS_DK (demo)",
+    webClientBase: "",
+    webClientLinks: { item: "/webapp/index.html#/OITM/{ItemCode}" }
+  };
+  window.B1Report.load(MOCK);
+})();
+</script>
+</body>
+</html>
