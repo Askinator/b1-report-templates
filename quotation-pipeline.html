@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quotation Pipeline · B1 Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f0f2f7;
+  --surface:  #ffffff;
+  --border:   rgba(0,0,0,0.08);
+  --text:     #1a1d2e;
+  --muted:    #6b7280;
+  --blue:     #2563eb;
+  --green:    #059669;
+  --amber:    #d97706;
+  --red:      #dc2626;
+  --font:     'DM Sans', sans-serif;
+  --mono:     'DM Mono', monospace;
+}
+
+body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; padding: 20px; min-height: 100vh; }
+
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.header-left h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.4px; }
+.header-left .meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; }
+.header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; padding: 3px 9px; border-radius: 4px; border: 1px solid; white-space: nowrap; }
+.badge-demo { color: var(--amber); background: rgba(217,119,6,0.08); border-color: rgba(217,119,6,0.25); }
+.badge-live { color: var(--green); background: rgba(5,150,105,0.08); border-color: rgba(5,150,105,0.25); }
+.company-tag { font-family: var(--mono); font-size: 10px; color: var(--muted); background: rgba(0,0,0,0.04); border: 1px solid var(--border); padding: 3px 9px; border-radius: 4px; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; position: relative; overflow: hidden; }
+.kpi::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 8px 8px 0 0; }
+.kpi-blue::after  { background: var(--blue); }
+.kpi-green::after { background: var(--green); }
+.kpi-amber::after { background: var(--amber); }
+.kpi-red::after   { background: var(--red); }
+.kpi-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+.kpi-value { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; color: var(--text); line-height: 1; margin-bottom: 6px; }
+.kpi-delta { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.kpi-delta.up   { color: var(--green); }
+.kpi-delta.down { color: var(--red); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.card-title { font-size: 12px; font-weight: 500; }
+.card-hint { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.warning-banner { display: none; align-items: center; gap: 8px; background: rgba(217,119,6,0.07); border: 1px solid rgba(217,119,6,0.2); border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-family: var(--mono); font-size: 11px; color: var(--amber); }
+.warning-banner.visible { display: flex; }
+
+.chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+table { width: 100%; border-collapse: collapse; }
+thead th { font-family: var(--mono); font-size: 10px; font-weight: 400; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; text-align: left; padding: 0 10px 10px 0; border-bottom: 1px solid var(--border); }
+thead th.r { text-align: right; padding-right: 0; }
+tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(0,0,0,0.03); }
+tbody td { padding: 9px 10px 9px 0; font-size: 12px; color: var(--text); vertical-align: middle; }
+tbody td.r { text-align: right; padding-right: 0; }
+tbody td.mono { font-family: var(--mono); }
+tbody td.muted { color: var(--muted); }
+
+.row-primary   { font-weight: 500; }
+.row-secondary { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-green { background: var(--green); }
+.dot-amber { background: var(--amber); }
+.dot-red   { background: var(--red); }
+.dot-blue  { background: var(--blue); }
+
+.link-cell a { color: var(--blue); text-decoration: none; font-family: var(--mono); font-size: 11px; opacity: 0.7; transition: opacity 0.15s; }
+.link-cell a:hover { opacity: 1; text-decoration: underline; }
+
+.footer { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; margin-top: 4px; border-top: 1px solid var(--border); }
+.footer span { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.empty { text-align: center; padding: 32px; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+
+@media (max-width: 640px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } .chart-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1 id="rpt-title">Quotation Pipeline</h1>
+    <div class="meta" id="rpt-meta">Waiting for data…</div>
+  </div>
+  <div class="header-right">
+    <span class="badge badge-demo" id="rpt-badge">● Demo</span>
+    <span class="company-tag" id="rpt-company">—</span>
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi kpi-blue">
+    <div class="kpi-label">Pipeline Value</div>
+    <div class="kpi-value" id="kpi-1">—</div>
+    <div class="kpi-delta" id="kpi-1-d"></div>
+  </div>
+  <div class="kpi kpi-green">
+    <div class="kpi-label">Open Quotes</div>
+    <div class="kpi-value" id="kpi-2">—</div>
+    <div class="kpi-delta" id="kpi-2-d"></div>
+  </div>
+  <div class="kpi kpi-amber">
+    <div class="kpi-label">Avg Quote Age</div>
+    <div class="kpi-value" id="kpi-3">—</div>
+    <div class="kpi-delta" id="kpi-3-d"></div>
+  </div>
+  <div class="kpi kpi-red">
+    <div class="kpi-label">Expiring This Week</div>
+    <div class="kpi-value" id="kpi-4">—</div>
+    <div class="kpi-delta" id="kpi-4-d"></div>
+  </div>
+</div>
+
+<div class="warning-banner" id="warning-expiring">
+  ⚠ Quotations expiring soon — follow up before they go cold
+</div>
+
+<div class="chart-row">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Pipeline by Quote Age</span>
+      <span class="card-hint">OQUT."DocDate" vs today · open value</span>
+    </div>
+    <canvas id="chart-age" height="140"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Quote Freshness</span>
+      <span class="card-hint">by quote count</span>
+    </div>
+    <canvas id="chart-freshness" height="140"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Open Quotations</span>
+    <span class="card-hint">OQUT · sorted by expiry date ascending</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Customer</th>
+        <th>Quote #</th>
+        <th>Quote Date</th>
+        <th>Valid Until</th>
+        <th class="r">Age (days)</th>
+        <th>Status</th>
+        <th class="r">Value</th>
+        <th class="r">Open in SAP</th>
+      </tr>
+    </thead>
+    <tbody id="tbl-body">
+      <tr><td colspan="8" class="empty">Waiting for data…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <span id="rpt-ts">—</span>
+  <span id="rpt-sl">SAP Business One · Service Layer</span>
+</div>
+
+<script>
+window.B1Report = {
+
+  meta: {
+    id:          "quotation-pipeline",
+    name:        "Quotation pipeline",
+    description: "Open quotations not yet converted to orders, with age in days, expiry tracking, and pipeline value. Use when user asks about quotes, quotations, pipeline, or proposals.",
+    tags:        ["quotations", "quotes", "pipeline", "proposals", "sales funnel"],
+    queries:     ["quotations"]
+  },
+
+  _charts: {},
+
+  load(data) {
+    const quotations = data.quotations || [];
+    const base       = data.webClientBase || '';
+    const links      = data.webClientLinks || {};
+    const company    = data.company || '—';
+    const currency   = quotations[0]?.DocCurrency || 'DKK';
+    const today      = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const isDemo = !window.__B1_AGENT_CONTROLLED__;
+    document.getElementById('rpt-company').textContent = company;
+    document.getElementById('rpt-badge').textContent   = isDemo ? '● Demo' : '● Live';
+    document.getElementById('rpt-badge').className     = 'badge ' + (isDemo ? 'badge-demo' : 'badge-live');
+    document.getElementById('rpt-meta').textContent    =
+      `${quotations.length} open quotations · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
+    document.getElementById('rpt-ts').textContent =
+      'Generated: ' + new Date().toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' });
+
+    const fmtK = n => {
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+      return n.toLocaleString('da-DK');
+    };
+
+    const daysSince = dateStr => {
+      if (!dateStr) return 0;
+      return Math.max(0, Math.floor((today - new Date(dateStr)) / 86400000));
+    };
+    const daysUntil = dateStr => {
+      if (!dateStr) return 999;
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return Math.floor((new Date(y, m - 1, d) - today) / 86400000);
+    };
+
+    const enriched = quotations.map(r => ({
+      ...r,
+      _age: daysSince(r.DocDate),
+      _daysToExpiry: daysUntil(r.ValidUntil)
+    }));
+
+    const pipelineValue  = enriched.reduce((s, r) => s + (r.DocTotal || 0), 0);
+    const avgAge         = enriched.length ? Math.round(enriched.reduce((s, r) => s + r._age, 0) / enriched.length) : 0;
+    const expiringCount  = enriched.filter(r => r._daysToExpiry >= 0 && r._daysToExpiry <= 7).length;
+
+    document.getElementById('kpi-1').textContent = fmtK(pipelineValue);
+    document.getElementById('kpi-2').textContent = quotations.length;
+    document.getElementById('kpi-3').textContent = avgAge + 'd';
+    document.getElementById('kpi-4').textContent = expiringCount;
+
+    const setDelta = (id, text, cls) => { const el = document.getElementById(id); el.textContent = text; el.className = 'kpi-delta ' + (cls || ''); };
+    setDelta('kpi-1-d', currency);
+    setDelta('kpi-2-d', 'awaiting conversion');
+    setDelta('kpi-3-d', 'from quote date');
+    setDelta('kpi-4-d', expiringCount > 0 ? '↑ Follow up now' : '✓ None urgent', expiringCount > 0 ? 'down' : 'up');
+
+    const warningEl = document.getElementById('warning-expiring');
+    if (expiringCount > 0) {
+      warningEl.textContent = `⚠ ${expiringCount} quotation${expiringCount !== 1 ? 's' : ''} expiring within 7 days — follow up before they go cold`;
+      warningEl.classList.add('visible');
+    } else warningEl.classList.remove('visible');
+
+    // Age bucket bar chart
+    const ageBuckets = [
+      { label: '0–7 days',   key: 'w1', min: 0,  max: 7 },
+      { label: '8–14 days',  key: 'w2', min: 8,  max: 14 },
+      { label: '15–30 days', key: 'm1', min: 15, max: 30 },
+      { label: '31–60 days', key: 'm2', min: 31, max: 60 },
+      { label: '60+ days',   key: 'old', min: 61, max: 9999 }
+    ];
+    const ageData = ageBuckets.map(b => ({
+      label: b.label,
+      value: enriched.filter(r => r._age >= b.min && r._age <= b.max).reduce((s, r) => s + (r.DocTotal || 0), 0)
+    }));
+    const ageColors = ['rgba(5,150,105,0.80)', 'rgba(37,99,235,0.80)', 'rgba(37,99,235,0.50)', 'rgba(217,119,6,0.80)', 'rgba(220,38,38,0.80)'];
+
+    if (this._charts.age) this._charts.age.destroy();
+    this._charts.age = new Chart(
+      document.getElementById('chart-age').getContext('2d'),
+      {
+        type: 'bar',
+        data: {
+          labels: ageData.map(d => d.label),
+          datasets: [{ data: ageData.map(d => d.value), backgroundColor: ageColors, borderColor: ageColors.map(c => c.replace(/0\.\d+\)/, '1)')), borderWidth: 1, borderRadius: 3 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { display: false }, tooltip: B1Report._tooltipDefaults(currency) },
+          scales: {
+            x: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } },
+            y: { grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false }, border: { display: false, dash: [3,3] }, ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 4 } }
+          }
+        }
+      }
+    );
+
+    // Freshness donut
+    const fresh  = enriched.filter(r => r._age <= 14).length;
+    const warm   = enriched.filter(r => r._age > 14 && r._age <= 30).length;
+    const stale  = enriched.filter(r => r._age > 30).length;
+
+    if (this._charts.freshness) this._charts.freshness.destroy();
+    this._charts.freshness = new Chart(
+      document.getElementById('chart-freshness').getContext('2d'),
+      {
+        type: 'doughnut',
+        data: {
+          labels: ['Fresh (≤14d)', 'Warm (15–30d)', 'Stale (>30d)'],
+          datasets: [{ data: [fresh, warm, stale], backgroundColor: ['rgba(5,150,105,0.85)', 'rgba(217,119,6,0.85)', 'rgba(220,38,38,0.85)'], borderColor: '#ffffff', borderWidth: 3, hoverOffset: 4 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true, cutout: '68%',
+          plugins: { legend: { position: 'bottom', labels: { color: '#6b7280', font: { family: "'DM Mono'", size: 10 }, boxWidth: 8, boxHeight: 8, padding: 10, usePointStyle: true, pointStyleWidth: 8 } }, tooltip: B1Report._tooltipDefaults() }
+        }
+      }
+    );
+
+    // Table
+    const tbody = document.getElementById('tbl-body');
+    tbody.innerHTML = '';
+    if (!enriched.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">No open quotations</td></tr>'; return; }
+
+    const sorted = [...enriched].sort((a, b) => a._daysToExpiry - b._daysToExpiry);
+
+    sorted.forEach(r => {
+      const link = (base && links.quotation && r.DocEntry)
+        ? base + links.quotation.replace('{DocEntry}', r.DocEntry) : '';
+      const fmtDate = s => s ? new Date(s).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+      let statusDot, statusText;
+      if (r._daysToExpiry < 0)       { statusDot = 'dot-red';   statusText = 'Expired'; }
+      else if (r._daysToExpiry <= 7) { statusDot = 'dot-amber'; statusText = 'Expiring'; }
+      else                           { statusDot = 'dot-green'; statusText = 'Active'; }
+
+      const tr = document.createElement('tr');
+      tr.onclick = () => { if (link) window.open(link, '_blank'); };
+      tr.innerHTML = `
+        <td><div class="row-primary">${r.CardName || '—'}</div><div class="row-secondary">${r.CardCode || ''}</div></td>
+        <td class="mono muted">${r.DocNum || '—'}</td>
+        <td class="mono muted">${fmtDate(r.DocDate)}</td>
+        <td class="mono muted">${fmtDate(r.ValidUntil)}</td>
+        <td class="r mono muted">${r._age}</td>
+        <td><span class="pill"><span class="dot ${statusDot}"></span>${statusText}</span></td>
+        <td class="r mono">${(r.DocTotal || 0).toLocaleString('da-DK')}</td>
+        <td class="r link-cell">${link ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  },
+
+  _tooltipDefaults(currency) { return { backgroundColor: '#ffffff', borderColor: 'rgba(0,0,0,0.12)', borderWidth: 1, titleColor: '#6b7280', bodyColor: '#1a1d2e', titleFont: { family: "'DM Mono'", size: 10 }, bodyFont: { family: "'DM Mono'", size: 12 }, callbacks: currency ? { label: ctx => ' ' + ctx.raw.toLocaleString('da-DK') + ' ' + currency } : undefined }; },
+  _tickDefaults() { return { color: '#6b7280', font: { family: "'DM Mono'", size: 10 } }; }
+};
+
+(function demoIfStandalone() {
+  if (window.__B1_AGENT_CONTROLLED__) return;
+  const MOCK = {
+    quotations: [
+      { DocEntry:701, DocNum:9001, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2026-03-25", ValidUntil:"2026-04-25", DocTotal:245000, DocCurrency:"DKK" },
+      { DocEntry:702, DocNum:9002, CardCode:"C0017", CardName:"Danfoss Group",       DocDate:"2026-03-20", ValidUntil:"2026-04-03", DocTotal:178000, DocCurrency:"DKK" },
+      { DocEntry:703, DocNum:9003, CardCode:"C0088", CardName:"Vestas Wind Systems",  DocDate:"2026-03-10", ValidUntil:"2026-04-10", DocTotal:412000, DocCurrency:"DKK" },
+      { DocEntry:704, DocNum:9004, CardCode:"C0055", CardName:"DSV Panalpina A/S",   DocDate:"2026-03-01", ValidUntil:"2026-03-31", DocTotal:89500,  DocCurrency:"DKK" },
+      { DocEntry:705, DocNum:9005, CardCode:"C0031", CardName:"Arla Foods amba",     DocDate:"2026-02-15", ValidUntil:"2026-03-30", DocTotal:67200,  DocCurrency:"DKK" },
+      { DocEntry:706, DocNum:9006, CardCode:"C0099", CardName:"Ørsted A/S",          DocDate:"2026-02-01", ValidUntil:"2026-04-01", DocTotal:534000, DocCurrency:"DKK" },
+      { DocEntry:707, DocNum:9007, CardCode:"C0063", CardName:"Coloplast A/S",       DocDate:"2026-01-20", ValidUntil:"2026-03-20", DocTotal:145600, DocCurrency:"DKK" },
+      { DocEntry:708, DocNum:9008, CardCode:"C0077", CardName:"Carlsberg A/S",       DocDate:"2026-01-10", ValidUntil:"2026-03-10", DocTotal:298000, DocCurrency:"DKK" },
+      { DocEntry:709, DocNum:9009, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2026-03-28", ValidUntil:"2026-04-28", DocTotal:112000, DocCurrency:"DKK" },
+    ],
+    company: "CRONUS_DK (demo)",
+    webClientBase: "",
+    webClientLinks: { quotation: "/webapp/index.html#/OQUT/{DocEntry}" }
+  };
+  window.B1Report.load(MOCK);
+})();
+</script>
+</body>
+</html>

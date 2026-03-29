@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gross Margin · B1 Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f0f2f7;
+  --surface:  #ffffff;
+  --border:   rgba(0,0,0,0.08);
+  --text:     #1a1d2e;
+  --muted:    #6b7280;
+  --blue:     #2563eb;
+  --green:    #059669;
+  --amber:    #d97706;
+  --red:      #dc2626;
+  --font:     'DM Sans', sans-serif;
+  --mono:     'DM Mono', monospace;
+}
+
+body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; padding: 20px; min-height: 100vh; }
+
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.header-left h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.4px; }
+.header-left .meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; }
+.header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; padding: 3px 9px; border-radius: 4px; border: 1px solid; white-space: nowrap; }
+.badge-demo { color: var(--amber); background: rgba(217,119,6,0.08); border-color: rgba(217,119,6,0.25); }
+.badge-live { color: var(--green); background: rgba(5,150,105,0.08); border-color: rgba(5,150,105,0.25); }
+.company-tag { font-family: var(--mono); font-size: 10px; color: var(--muted); background: rgba(0,0,0,0.04); border: 1px solid var(--border); padding: 3px 9px; border-radius: 4px; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; position: relative; overflow: hidden; }
+.kpi::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 8px 8px 0 0; }
+.kpi-blue::after  { background: var(--blue); }
+.kpi-green::after { background: var(--green); }
+.kpi-amber::after { background: var(--amber); }
+.kpi-red::after   { background: var(--red); }
+.kpi-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+.kpi-value { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; color: var(--text); line-height: 1; margin-bottom: 6px; }
+.kpi-delta { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.kpi-delta.up   { color: var(--green); }
+.kpi-delta.down { color: var(--red); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.card-title { font-size: 12px; font-weight: 500; }
+.card-hint { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.warning-banner { display: none; align-items: center; gap: 8px; background: rgba(217,119,6,0.07); border: 1px solid rgba(217,119,6,0.2); border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-family: var(--mono); font-size: 11px; color: var(--amber); }
+.warning-banner.visible { display: flex; }
+
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+table { width: 100%; border-collapse: collapse; }
+thead th { font-family: var(--mono); font-size: 10px; font-weight: 400; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; text-align: left; padding: 0 10px 10px 0; border-bottom: 1px solid var(--border); }
+thead th.r { text-align: right; padding-right: 0; }
+tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(0,0,0,0.03); }
+tbody td { padding: 9px 10px 9px 0; font-size: 12px; color: var(--text); vertical-align: middle; }
+tbody td.r { text-align: right; padding-right: 0; }
+tbody td.mono { font-family: var(--mono); }
+tbody td.muted { color: var(--muted); }
+
+.row-primary   { font-weight: 500; }
+.row-secondary { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-green { background: var(--green); }
+.dot-amber { background: var(--amber); }
+.dot-red   { background: var(--red); }
+
+.bar-wrap { display: flex; align-items: center; gap: 8px; }
+.bar-track { flex: 1; height: 4px; background: rgba(0,0,0,0.07); border-radius: 2px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 2px; }
+
+.link-cell a { color: var(--blue); text-decoration: none; font-family: var(--mono); font-size: 11px; opacity: 0.7; transition: opacity 0.15s; }
+.link-cell a:hover { opacity: 1; text-decoration: underline; }
+
+.footer { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; margin-top: 4px; border-top: 1px solid var(--border); }
+.footer span { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.empty { text-align: center; padding: 32px; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+
+@media (max-width: 640px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } .chart-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1 id="rpt-title">Gross Margin by Customer</h1>
+    <div class="meta" id="rpt-meta">Waiting for data…</div>
+  </div>
+  <div class="header-right">
+    <span class="badge badge-demo" id="rpt-badge">● Demo</span>
+    <span class="company-tag" id="rpt-company">—</span>
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi kpi-blue">
+    <div class="kpi-label">Total Revenue</div>
+    <div class="kpi-value" id="kpi-1">—</div>
+    <div class="kpi-delta" id="kpi-1-d"></div>
+  </div>
+  <div class="kpi kpi-green">
+    <div class="kpi-label">Gross Profit</div>
+    <div class="kpi-value" id="kpi-2">—</div>
+    <div class="kpi-delta" id="kpi-2-d"></div>
+  </div>
+  <div class="kpi kpi-amber">
+    <div class="kpi-label">Overall Margin %</div>
+    <div class="kpi-value" id="kpi-3">—</div>
+    <div class="kpi-delta" id="kpi-3-d"></div>
+  </div>
+  <div class="kpi kpi-red">
+    <div class="kpi-label">Below Threshold</div>
+    <div class="kpi-value" id="kpi-4">—</div>
+    <div class="kpi-delta" id="kpi-4-d"></div>
+  </div>
+</div>
+
+<div class="warning-banner" id="warning-margin">
+  ⚠ Customers below margin threshold — review pricing
+</div>
+
+<div class="chart-row">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Revenue vs Cost by Customer</span>
+      <span class="card-hint">OINV/INV1 · top 10 by revenue</span>
+    </div>
+    <canvas id="chart-margin" height="220"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Margin % Distribution</span>
+      <span class="card-hint">by customer count</span>
+    </div>
+    <canvas id="chart-dist" height="220"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Customer Profitability</span>
+    <span class="card-hint">OINV/INV1 · sorted by margin % ascending</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Customer</th>
+        <th class="r">Revenue</th>
+        <th class="r">Cost</th>
+        <th class="r">Gross Profit</th>
+        <th>Margin %</th>
+        <th>Health</th>
+        <th class="r">Open in SAP</th>
+      </tr>
+    </thead>
+    <tbody id="tbl-body">
+      <tr><td colspan="7" class="empty">Waiting for data…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <span id="rpt-ts">—</span>
+  <span id="rpt-sl">SAP Business One · Service Layer</span>
+</div>
+
+<script>
+window.B1Report = {
+
+  meta: {
+    id:          "gross-margin",
+    name:        "Gross margin by customer",
+    description: "Customer profitability analysis showing revenue, cost, gross profit and margin %. Flags customers below margin threshold. Use when user asks about margins, profitability, cost analysis, or pricing.",
+    tags:        ["margin", "profitability", "gross profit", "cost", "pricing"],
+    queries:     ["marginData"]
+  },
+
+  _charts: {},
+  MARGIN_THRESHOLD: 20,
+
+  load(data) {
+    const marginData = data.marginData || [];
+    const base       = data.webClientBase || '';
+    const links      = data.webClientLinks || {};
+    const company    = data.company || '—';
+    const currency   = data.currency || 'DKK';
+
+    const isDemo = !window.__B1_AGENT_CONTROLLED__;
+    document.getElementById('rpt-company').textContent = company;
+    document.getElementById('rpt-badge').textContent   = isDemo ? '● Demo' : '● Live';
+    document.getElementById('rpt-badge').className     = 'badge ' + (isDemo ? 'badge-demo' : 'badge-live');
+    document.getElementById('rpt-meta').textContent    =
+      `${marginData.length} customers · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
+    document.getElementById('rpt-ts').textContent =
+      'Generated: ' + new Date().toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' });
+
+    const fmtK = n => {
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+      return n.toLocaleString('da-DK');
+    };
+
+    const enriched = marginData.map(r => {
+      const revenue = r.Revenue || 0;
+      const cost    = r.TotalCost || 0;
+      const gp      = r.GrossProfit != null ? r.GrossProfit : (revenue - cost);
+      const pct     = revenue > 0 ? Math.round((gp / revenue) * 100) : 0;
+      let health;
+      if (pct < this.MARGIN_THRESHOLD) health = { key: 'low', label: 'Low', dot: 'dot-red' };
+      else if (pct < 35)              health = { key: 'mid', label: 'Fair', dot: 'dot-amber' };
+      else                            health = { key: 'ok',  label: 'Good', dot: 'dot-green' };
+      return { ...r, _revenue: revenue, _cost: cost, _gp: gp, _pct: pct, _health: health };
+    });
+
+    const totalRevenue = enriched.reduce((s, r) => s + r._revenue, 0);
+    const totalGP      = enriched.reduce((s, r) => s + r._gp, 0);
+    const overallPct   = totalRevenue > 0 ? Math.round((totalGP / totalRevenue) * 100) : 0;
+    const belowThresh  = enriched.filter(r => r._health.key === 'low').length;
+
+    document.getElementById('kpi-1').textContent = fmtK(totalRevenue);
+    document.getElementById('kpi-2').textContent = fmtK(totalGP);
+    document.getElementById('kpi-3').textContent = overallPct + '%';
+    document.getElementById('kpi-4').textContent = belowThresh;
+
+    const setDelta = (id, text, cls) => { const el = document.getElementById(id); el.textContent = text; el.className = 'kpi-delta ' + (cls || ''); };
+    setDelta('kpi-1-d', currency);
+    setDelta('kpi-2-d', currency);
+    setDelta('kpi-3-d', overallPct >= this.MARGIN_THRESHOLD ? '✓ Above threshold' : '↑ Below target', overallPct >= this.MARGIN_THRESHOLD ? 'up' : 'down');
+    setDelta('kpi-4-d', belowThresh > 0 ? `↑ Below ${this.MARGIN_THRESHOLD}% threshold` : '✓ All healthy', belowThresh > 0 ? 'down' : 'up');
+
+    const warningEl = document.getElementById('warning-margin');
+    if (belowThresh > 0) {
+      warningEl.textContent = `⚠ ${belowThresh} customer${belowThresh !== 1 ? 's' : ''} below ${this.MARGIN_THRESHOLD}% margin threshold — review pricing`;
+      warningEl.classList.add('visible');
+    } else warningEl.classList.remove('visible');
+
+    // Revenue vs Cost stacked bar
+    const topByRev = [...enriched].sort((a, b) => b._revenue - a._revenue).slice(0, 10);
+
+    if (this._charts.margin) this._charts.margin.destroy();
+    this._charts.margin = new Chart(
+      document.getElementById('chart-margin').getContext('2d'),
+      {
+        type: 'bar',
+        data: {
+          labels: topByRev.map(r => r.CardName?.length > 16 ? r.CardName.slice(0, 15) + '…' : (r.CardName || r.CardCode)),
+          datasets: [
+            { label: 'Cost', data: topByRev.map(r => r._cost), backgroundColor: 'rgba(220,38,38,0.25)', borderColor: 'rgba(220,38,38,0.5)', borderWidth: 1, borderRadius: 3 },
+            { label: 'Gross Profit', data: topByRev.map(r => r._gp), backgroundColor: 'rgba(5,150,105,0.7)', borderColor: 'rgba(5,150,105,1)', borderWidth: 1, borderRadius: 3 }
+          ]
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { position: 'bottom', labels: { color: '#6b7280', font: { family: "'DM Mono'", size: 10 }, boxWidth: 8, boxHeight: 8, padding: 10, usePointStyle: true, pointStyleWidth: 8 } }, tooltip: B1Report._tooltipDefaults(currency) },
+          scales: {
+            x: { stacked: true, grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false }, border: { display: false, dash: [3,3] }, ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 4 } },
+            y: { stacked: true, grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } }
+          }
+        }
+      }
+    );
+
+    // Margin distribution donut
+    const lowCount  = enriched.filter(r => r._health.key === 'low').length;
+    const midCount  = enriched.filter(r => r._health.key === 'mid').length;
+    const goodCount = enriched.filter(r => r._health.key === 'ok').length;
+
+    if (this._charts.dist) this._charts.dist.destroy();
+    this._charts.dist = new Chart(
+      document.getElementById('chart-dist').getContext('2d'),
+      {
+        type: 'doughnut',
+        data: {
+          labels: [`<${this.MARGIN_THRESHOLD}%`, `${this.MARGIN_THRESHOLD}–35%`, '>35%'],
+          datasets: [{ data: [lowCount, midCount, goodCount], backgroundColor: ['rgba(220,38,38,0.85)', 'rgba(217,119,6,0.85)', 'rgba(5,150,105,0.85)'], borderColor: '#ffffff', borderWidth: 3, hoverOffset: 4 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true, cutout: '68%',
+          plugins: { legend: { position: 'bottom', labels: { color: '#6b7280', font: { family: "'DM Mono'", size: 10 }, boxWidth: 8, boxHeight: 8, padding: 10, usePointStyle: true, pointStyleWidth: 8 } }, tooltip: B1Report._tooltipDefaults() }
+        }
+      }
+    );
+
+    // Table
+    const tbody = document.getElementById('tbl-body');
+    tbody.innerHTML = '';
+    if (!enriched.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">No margin data available</td></tr>'; return; }
+
+    const sorted = [...enriched].sort((a, b) => a._pct - b._pct);
+
+    sorted.forEach(r => {
+      const link = (base && links.customer && r.CardCode)
+        ? base + links.customer.replace('{CardCode}', r.CardCode) : '';
+
+      const barColor = r._health.key === 'low' ? 'var(--red)' : r._health.key === 'mid' ? 'var(--amber)' : 'var(--green)';
+
+      const tr = document.createElement('tr');
+      tr.onclick = () => { if (link) window.open(link, '_blank'); };
+      tr.innerHTML = `
+        <td><div class="row-primary">${r.CardName || '—'}</div><div class="row-secondary">${r.CardCode || ''}</div></td>
+        <td class="r mono">${fmtK(r._revenue)}</td>
+        <td class="r mono muted">${fmtK(r._cost)}</td>
+        <td class="r mono">${fmtK(r._gp)}</td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.min(r._pct, 100)}%;background:${barColor}"></div></div>
+            <span class="mono muted" style="font-size:10px;min-width:30px;text-align:right">${r._pct}%</span>
+          </div>
+        </td>
+        <td><span class="pill"><span class="dot ${r._health.dot}"></span>${r._health.label}</span></td>
+        <td class="r link-cell">${link ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  },
+
+  _tooltipDefaults(currency) { return { backgroundColor: '#ffffff', borderColor: 'rgba(0,0,0,0.12)', borderWidth: 1, titleColor: '#6b7280', bodyColor: '#1a1d2e', titleFont: { family: "'DM Mono'", size: 10 }, bodyFont: { family: "'DM Mono'", size: 12 }, callbacks: currency ? { label: ctx => ' ' + ctx.raw.toLocaleString('da-DK') + ' ' + currency } : undefined }; },
+  _tickDefaults() { return { color: '#6b7280', font: { family: "'DM Mono'", size: 10 } }; }
+};
+
+(function demoIfStandalone() {
+  if (window.__B1_AGENT_CONTROLLED__) return;
+  const MOCK = {
+    marginData: [
+      { CardCode:"C0042", CardName:"Novo Industri A/S",   Revenue:459500, TotalCost:275700, GrossProfit:183800 },
+      { CardCode:"C0017", CardName:"Danfoss Group",       Revenue:542800, TotalCost:379960, GrossProfit:162840 },
+      { CardCode:"C0088", CardName:"Vestas Wind Systems",  Revenue:241300, TotalCost:192240, GrossProfit:49060  },
+      { CardCode:"C0055", CardName:"DSV Panalpina A/S",   Revenue:203300, TotalCost:111815, GrossProfit:91485  },
+      { CardCode:"C0031", CardName:"Arla Foods amba",     Revenue:120500, TotalCost:102425, GrossProfit:18075  },
+      { CardCode:"C0099", CardName:"Ørsted A/S",          Revenue:588000, TotalCost:311640, GrossProfit:276360 },
+      { CardCode:"C0063", CardName:"Coloplast A/S",       Revenue:134200, TotalCost:67100,  GrossProfit:67100  },
+      { CardCode:"C0077", CardName:"Carlsberg A/S",       Revenue:312000, TotalCost:280800, GrossProfit:31200  },
+    ],
+    currency: "DKK",
+    company: "CRONUS_DK (demo)",
+    webClientBase: "",
+    webClientLinks: { customer: "/webapp/index.html#/OCRD/{CardCode}" }
+  };
+  window.B1Report.load(MOCK);
+})();
+</script>
+</body>
+</html>

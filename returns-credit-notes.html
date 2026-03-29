@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Returns &amp; Credit Notes · B1 Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f0f2f7;
+  --surface:  #ffffff;
+  --border:   rgba(0,0,0,0.08);
+  --text:     #1a1d2e;
+  --muted:    #6b7280;
+  --blue:     #2563eb;
+  --green:    #059669;
+  --amber:    #d97706;
+  --red:      #dc2626;
+  --font:     'DM Sans', sans-serif;
+  --mono:     'DM Mono', monospace;
+}
+
+body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; padding: 20px; min-height: 100vh; }
+
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.header-left h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.4px; }
+.header-left .meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; }
+.header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; padding: 3px 9px; border-radius: 4px; border: 1px solid; white-space: nowrap; }
+.badge-demo { color: var(--amber); background: rgba(217,119,6,0.08); border-color: rgba(217,119,6,0.25); }
+.badge-live { color: var(--green); background: rgba(5,150,105,0.08); border-color: rgba(5,150,105,0.25); }
+.company-tag { font-family: var(--mono); font-size: 10px; color: var(--muted); background: rgba(0,0,0,0.04); border: 1px solid var(--border); padding: 3px 9px; border-radius: 4px; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; position: relative; overflow: hidden; }
+.kpi::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 8px 8px 0 0; }
+.kpi-blue::after  { background: var(--blue); }
+.kpi-green::after { background: var(--green); }
+.kpi-amber::after { background: var(--amber); }
+.kpi-red::after   { background: var(--red); }
+.kpi-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+.kpi-value { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; color: var(--text); line-height: 1; margin-bottom: 6px; }
+.kpi-delta { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.kpi-delta.up   { color: var(--green); }
+.kpi-delta.down { color: var(--red); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.card-title { font-size: 12px; font-weight: 500; }
+.card-hint { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+table { width: 100%; border-collapse: collapse; }
+thead th { font-family: var(--mono); font-size: 10px; font-weight: 400; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; text-align: left; padding: 0 10px 10px 0; border-bottom: 1px solid var(--border); }
+thead th.r { text-align: right; padding-right: 0; }
+tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(0,0,0,0.03); }
+tbody td { padding: 9px 10px 9px 0; font-size: 12px; color: var(--text); vertical-align: middle; }
+tbody td.r { text-align: right; padding-right: 0; }
+tbody td.mono { font-family: var(--mono); }
+tbody td.muted { color: var(--muted); }
+
+.row-primary   { font-weight: 500; }
+.row-secondary { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+.link-cell a { color: var(--blue); text-decoration: none; font-family: var(--mono); font-size: 11px; opacity: 0.7; transition: opacity 0.15s; }
+.link-cell a:hover { opacity: 1; text-decoration: underline; }
+
+.footer { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; margin-top: 4px; border-top: 1px solid var(--border); }
+.footer span { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.empty { text-align: center; padding: 32px; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+
+@media (max-width: 640px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } .chart-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1 id="rpt-title">Returns &amp; Credit Notes</h1>
+    <div class="meta" id="rpt-meta">Waiting for data…</div>
+  </div>
+  <div class="header-right">
+    <span class="badge badge-demo" id="rpt-badge">● Demo</span>
+    <span class="company-tag" id="rpt-company">—</span>
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi kpi-red">
+    <div class="kpi-label">Total Credit Value</div>
+    <div class="kpi-value" id="kpi-1">—</div>
+    <div class="kpi-delta" id="kpi-1-d"></div>
+  </div>
+  <div class="kpi kpi-blue">
+    <div class="kpi-label">Credit Notes</div>
+    <div class="kpi-value" id="kpi-2">—</div>
+    <div class="kpi-delta" id="kpi-2-d"></div>
+  </div>
+  <div class="kpi kpi-amber">
+    <div class="kpi-label">Top Returning Customer</div>
+    <div class="kpi-value" id="kpi-3">—</div>
+    <div class="kpi-delta" id="kpi-3-d"></div>
+  </div>
+  <div class="kpi kpi-amber">
+    <div class="kpi-label">Avg Credit Value</div>
+    <div class="kpi-value" id="kpi-4">—</div>
+    <div class="kpi-delta" id="kpi-4-d"></div>
+  </div>
+</div>
+
+<div class="chart-row">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Monthly Credit Note Trend</span>
+      <span class="card-hint">ORIN."DocDate" · rolling 6 months</span>
+    </div>
+    <canvas id="chart-trend" height="160"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Top Customers by Credit Value</span>
+      <span class="card-hint">ORIN · top 8</span>
+    </div>
+    <canvas id="chart-customers" height="160"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Credit Notes Detail</span>
+    <span class="card-hint">ORIN · sorted by date descending</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Customer</th>
+        <th>Credit Note #</th>
+        <th>Date</th>
+        <th class="r">Amount</th>
+        <th class="r">Open in SAP</th>
+      </tr>
+    </thead>
+    <tbody id="tbl-body">
+      <tr><td colspan="5" class="empty">Waiting for data…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <span id="rpt-ts">—</span>
+  <span id="rpt-sl">SAP Business One · Service Layer</span>
+</div>
+
+<script>
+window.B1Report = {
+
+  meta: {
+    id:          "returns-credit-notes",
+    name:        "Returns & credit notes",
+    description: "AR credit notes issued in the last 6 months, grouped by customer and month. Shows return trends and repeat offenders. Use when user asks about returns, credit notes, refunds, or quality issues.",
+    tags:        ["returns", "credit notes", "refunds", "quality"],
+    queries:     ["creditNotes"]
+  },
+
+  _charts: {},
+
+  load(data) {
+    const creditNotes = data.creditNotes || [];
+    const base        = data.webClientBase || '';
+    const links       = data.webClientLinks || {};
+    const company     = data.company || '—';
+    const currency    = creditNotes[0]?.DocCurrency || 'DKK';
+
+    const isDemo = !window.__B1_AGENT_CONTROLLED__;
+    document.getElementById('rpt-company').textContent = company;
+    document.getElementById('rpt-badge').textContent   = isDemo ? '● Demo' : '● Live';
+    document.getElementById('rpt-badge').className     = 'badge ' + (isDemo ? 'badge-demo' : 'badge-live');
+    document.getElementById('rpt-meta').textContent    =
+      `${creditNotes.length} credit notes · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
+    document.getElementById('rpt-ts').textContent =
+      'Generated: ' + new Date().toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' });
+
+    const fmtK = n => {
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+      return n.toLocaleString('da-DK');
+    };
+
+    const totalCredit = creditNotes.reduce((s, r) => s + (r.DocTotal || 0), 0);
+    const avgCredit   = creditNotes.length ? Math.round(totalCredit / creditNotes.length) : 0;
+
+    // Top returning customer
+    const custMap = {};
+    creditNotes.forEach(r => {
+      const k = r.CardCode || '—';
+      if (!custMap[k]) custMap[k] = { CardCode: r.CardCode, CardName: r.CardName || k, count: 0, total: 0 };
+      custMap[k].count++;
+      custMap[k].total += r.DocTotal || 0;
+    });
+    const customers = Object.values(custMap).sort((a, b) => b.total - a.total);
+    const topReturner = customers[0];
+
+    document.getElementById('kpi-1').textContent = fmtK(totalCredit);
+    document.getElementById('kpi-2').textContent = creditNotes.length;
+    document.getElementById('kpi-3').textContent = topReturner ? fmtK(topReturner.total) : '—';
+    document.getElementById('kpi-4').textContent = fmtK(avgCredit);
+
+    const setDelta = (id, text, cls) => { const el = document.getElementById(id); el.textContent = text; el.className = 'kpi-delta ' + (cls || ''); };
+    setDelta('kpi-1-d', currency);
+    setDelta('kpi-2-d', 'rolling 6 months');
+    setDelta('kpi-3-d', topReturner ? topReturner.CardName : '—');
+    setDelta('kpi-4-d', currency);
+
+    // Monthly trend
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const acc = {};
+    creditNotes.forEach(r => {
+      const d = new Date(r.DocDate || Date.now());
+      const k = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}`;
+      if (!acc[k]) acc[k] = { label: monthNames[d.getMonth()], value: 0, count: 0, sort: k };
+      acc[k].value += r.DocTotal || 0;
+      acc[k].count++;
+    });
+    const barData = Object.values(acc).sort((a, b) => a.sort.localeCompare(b.sort)).slice(-6);
+
+    if (this._charts.trend) this._charts.trend.destroy();
+    this._charts.trend = new Chart(
+      document.getElementById('chart-trend').getContext('2d'),
+      {
+        type: 'bar',
+        data: {
+          labels: barData.map(d => d.label),
+          datasets: [{
+            data: barData.map(d => d.value),
+            backgroundColor: barData.map((_, i) => i === barData.length - 1 ? 'rgba(220,38,38,0.75)' : 'rgba(220,38,38,0.25)'),
+            borderColor: barData.map((_, i) => i === barData.length - 1 ? 'rgba(220,38,38,1)' : 'rgba(220,38,38,0.5)'),
+            borderWidth: 1, borderRadius: 3
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { display: false }, tooltip: B1Report._tooltipDefaults(currency) },
+          scales: {
+            x: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } },
+            y: { grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false }, border: { display: false, dash: [3,3] }, ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 4 } }
+          }
+        }
+      }
+    );
+
+    // Top customers bar
+    const topCust = customers.slice(0, 8);
+    if (this._charts.customers) this._charts.customers.destroy();
+    this._charts.customers = new Chart(
+      document.getElementById('chart-customers').getContext('2d'),
+      {
+        type: 'bar',
+        data: {
+          labels: topCust.map(c => c.CardName.length > 20 ? c.CardName.slice(0, 19) + '…' : c.CardName),
+          datasets: [{ data: topCust.map(c => c.total), backgroundColor: 'rgba(220,38,38,0.65)', borderColor: 'rgba(220,38,38,1)', borderWidth: 1, borderRadius: 3 }]
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { display: false }, tooltip: B1Report._tooltipDefaults(currency) },
+          scales: {
+            x: { grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false }, border: { display: false, dash: [3,3] }, ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 4 } },
+            y: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } }
+          }
+        }
+      }
+    );
+
+    // Table
+    const tbody = document.getElementById('tbl-body');
+    tbody.innerHTML = '';
+    if (!creditNotes.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No credit notes in this period</td></tr>'; return; }
+
+    const sorted = [...creditNotes].sort((a, b) => (b.DocDate || '').localeCompare(a.DocDate || ''));
+
+    sorted.slice(0, 50).forEach(r => {
+      const link = (base && links.creditNote && r.DocEntry)
+        ? base + links.creditNote.replace('{DocEntry}', r.DocEntry) : '';
+      const fmtDate = s => s ? new Date(s).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+      const tr = document.createElement('tr');
+      tr.onclick = () => { if (link) window.open(link, '_blank'); };
+      tr.innerHTML = `
+        <td><div class="row-primary">${r.CardName || '—'}</div><div class="row-secondary">${r.CardCode || ''}</div></td>
+        <td class="mono muted">${r.DocNum || '—'}</td>
+        <td class="mono muted">${fmtDate(r.DocDate)}</td>
+        <td class="r mono">${(r.DocTotal || 0).toLocaleString('da-DK')}</td>
+        <td class="r link-cell">${link ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  },
+
+  _tooltipDefaults(currency) { return { backgroundColor: '#ffffff', borderColor: 'rgba(0,0,0,0.12)', borderWidth: 1, titleColor: '#6b7280', bodyColor: '#1a1d2e', titleFont: { family: "'DM Mono'", size: 10 }, bodyFont: { family: "'DM Mono'", size: 12 }, callbacks: currency ? { label: ctx => ' ' + ctx.raw.toLocaleString('da-DK') + ' ' + currency } : undefined }; },
+  _tickDefaults() { return { color: '#6b7280', font: { family: "'DM Mono'", size: 10 } }; }
+};
+
+(function demoIfStandalone() {
+  if (window.__B1_AGENT_CONTROLLED__) return;
+  const MOCK = {
+    creditNotes: [
+      { DocEntry:801, DocNum:4001, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2026-03-22", DocTotal:28400,  DocCurrency:"DKK" },
+      { DocEntry:802, DocNum:4002, CardCode:"C0017", CardName:"Danfoss Group",       DocDate:"2026-03-15", DocTotal:15200,  DocCurrency:"DKK" },
+      { DocEntry:803, DocNum:4003, CardCode:"C0088", CardName:"Vestas Wind Systems",  DocDate:"2026-03-10", DocTotal:42000,  DocCurrency:"DKK" },
+      { DocEntry:804, DocNum:4004, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2026-02-28", DocTotal:18900,  DocCurrency:"DKK" },
+      { DocEntry:805, DocNum:4005, CardCode:"C0055", CardName:"DSV Panalpina A/S",   DocDate:"2026-02-20", DocTotal:9800,   DocCurrency:"DKK" },
+      { DocEntry:806, DocNum:4006, CardCode:"C0031", CardName:"Arla Foods amba",     DocDate:"2026-02-12", DocTotal:34500,  DocCurrency:"DKK" },
+      { DocEntry:807, DocNum:4007, CardCode:"C0099", CardName:"Ørsted A/S",          DocDate:"2026-01-25", DocTotal:67800,  DocCurrency:"DKK" },
+      { DocEntry:808, DocNum:4008, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2026-01-18", DocTotal:12300,  DocCurrency:"DKK" },
+      { DocEntry:809, DocNum:4009, CardCode:"C0088", CardName:"Vestas Wind Systems",  DocDate:"2026-01-05", DocTotal:55200,  DocCurrency:"DKK" },
+      { DocEntry:810, DocNum:4010, CardCode:"C0017", CardName:"Danfoss Group",       DocDate:"2025-12-20", DocTotal:23100,  DocCurrency:"DKK" },
+      { DocEntry:811, DocNum:4011, CardCode:"C0063", CardName:"Coloplast A/S",       DocDate:"2025-12-10", DocTotal:8400,   DocCurrency:"DKK" },
+      { DocEntry:812, DocNum:4012, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2025-11-28", DocTotal:31200,  DocCurrency:"DKK" },
+      { DocEntry:813, DocNum:4013, CardCode:"C0055", CardName:"DSV Panalpina A/S",   DocDate:"2025-11-15", DocTotal:14500,  DocCurrency:"DKK" },
+      { DocEntry:814, DocNum:4014, CardCode:"C0099", CardName:"Ørsted A/S",          DocDate:"2025-10-30", DocTotal:45600,  DocCurrency:"DKK" },
+      { DocEntry:815, DocNum:4015, CardCode:"C0031", CardName:"Arla Foods amba",     DocDate:"2025-10-18", DocTotal:19800,  DocCurrency:"DKK" },
+    ],
+    company: "CRONUS_DK (demo)",
+    webClientBase: "",
+    webClientLinks: { creditNote: "/webapp/index.html#/ORIN/{DocEntry}" }
+  };
+  window.B1Report.load(MOCK);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open Sales Orders · B1 Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f0f2f7;
+  --surface:  #ffffff;
+  --border:   rgba(0,0,0,0.08);
+  --text:     #1a1d2e;
+  --muted:    #6b7280;
+  --blue:     #2563eb;
+  --green:    #059669;
+  --amber:    #d97706;
+  --red:      #dc2626;
+  --font:     'DM Sans', sans-serif;
+  --mono:     'DM Mono', monospace;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.header-left h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.4px; color: var(--text); }
+.header-left .meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; }
+.header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; padding: 3px 9px; border-radius: 4px; border: 1px solid; white-space: nowrap; }
+.badge-demo { color: var(--amber); background: rgba(217,119,6,0.08); border-color: rgba(217,119,6,0.25); }
+.badge-live { color: var(--green); background: rgba(5,150,105,0.08); border-color: rgba(5,150,105,0.25); }
+.company-tag { font-family: var(--mono); font-size: 10px; color: var(--muted); background: rgba(0,0,0,0.04); border: 1px solid var(--border); padding: 3px 9px; border-radius: 4px; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; position: relative; overflow: hidden; }
+.kpi::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 8px 8px 0 0; }
+.kpi-blue::after  { background: var(--blue); }
+.kpi-green::after { background: var(--green); }
+.kpi-amber::after { background: var(--amber); }
+.kpi-red::after   { background: var(--red); }
+.kpi-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+.kpi-value { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; color: var(--text); line-height: 1; margin-bottom: 6px; }
+.kpi-delta { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.kpi-delta.up   { color: var(--green); }
+.kpi-delta.down { color: var(--red); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.card-title { font-size: 12px; font-weight: 500; color: var(--text); }
+.card-hint { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.warning-banner { display: none; align-items: center; gap: 8px; background: rgba(220,38,38,0.06); border: 1px solid rgba(220,38,38,0.2); border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-family: var(--mono); font-size: 11px; color: var(--red); }
+.warning-banner.visible { display: flex; }
+
+.chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+table { width: 100%; border-collapse: collapse; }
+thead th { font-family: var(--mono); font-size: 10px; font-weight: 400; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; text-align: left; padding: 0 10px 10px 0; border-bottom: 1px solid var(--border); }
+thead th.r { text-align: right; padding-right: 0; }
+tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(0,0,0,0.03); }
+tbody td { padding: 9px 10px 9px 0; font-size: 12px; color: var(--text); vertical-align: middle; }
+tbody td.r { text-align: right; padding-right: 0; }
+tbody td.mono { font-family: var(--mono); }
+tbody td.muted { color: var(--muted); }
+
+.row-primary   { font-weight: 500; color: var(--text); }
+.row-secondary { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-green { background: var(--green); }
+.dot-amber { background: var(--amber); }
+.dot-red   { background: var(--red); }
+.dot-blue  { background: var(--blue); }
+
+.link-cell a { color: var(--blue); text-decoration: none; font-family: var(--mono); font-size: 11px; opacity: 0.7; transition: opacity 0.15s; }
+.link-cell a:hover { opacity: 1; text-decoration: underline; }
+
+.footer { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; margin-top: 4px; border-top: 1px solid var(--border); }
+.footer span { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.empty { text-align: center; padding: 32px; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+
+@media (max-width: 640px) {
+  .kpi-row   { grid-template-columns: repeat(2, 1fr); }
+  .chart-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1 id="rpt-title">Open Sales Orders</h1>
+    <div class="meta" id="rpt-meta">Waiting for data…</div>
+  </div>
+  <div class="header-right">
+    <span class="badge badge-demo" id="rpt-badge">● Demo</span>
+    <span class="company-tag" id="rpt-company">—</span>
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi kpi-blue">
+    <div class="kpi-label">Backlog Value</div>
+    <div class="kpi-value" id="kpi-1">—</div>
+    <div class="kpi-delta" id="kpi-1-d"></div>
+  </div>
+  <div class="kpi kpi-green">
+    <div class="kpi-label">Open Orders</div>
+    <div class="kpi-value" id="kpi-2">—</div>
+    <div class="kpi-delta" id="kpi-2-d"></div>
+  </div>
+  <div class="kpi kpi-red">
+    <div class="kpi-label">Past Due</div>
+    <div class="kpi-value" id="kpi-3">—</div>
+    <div class="kpi-delta" id="kpi-3-d"></div>
+  </div>
+  <div class="kpi kpi-amber">
+    <div class="kpi-label">Avg Days Open</div>
+    <div class="kpi-value" id="kpi-4">—</div>
+    <div class="kpi-delta" id="kpi-4-d"></div>
+  </div>
+</div>
+
+<div class="warning-banner" id="warning-overdue">
+  ⚠ Orders past due date — prioritize fulfillment
+</div>
+
+<div class="chart-row">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Backlog by Due Week</span>
+      <span class="card-hint">ORDR."DocDueDate" · open order value</span>
+    </div>
+    <canvas id="chart-backlog" height="140"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Top Customers</span>
+      <span class="card-hint">by open order value · top 6</span>
+    </div>
+    <canvas id="chart-customers" height="140"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Open Orders</span>
+    <span class="card-hint">ORDR · sorted by days late descending</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Customer</th>
+        <th>Order #</th>
+        <th>Order Date</th>
+        <th>Due Date</th>
+        <th class="r">Days Late</th>
+        <th>Status</th>
+        <th class="r">Order Total</th>
+        <th class="r">Open in SAP</th>
+      </tr>
+    </thead>
+    <tbody id="tbl-body">
+      <tr><td colspan="8" class="empty">Waiting for data…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <span id="rpt-ts">—</span>
+  <span id="rpt-sl">SAP Business One · Service Layer</span>
+</div>
+
+<script>
+window.B1Report = {
+
+  meta: {
+    id:          "open-sales-orders",
+    name:        "Open sales orders",
+    description: "Delivery backlog showing open sales orders, days late, and fulfillment priority. Use when user asks about open orders, backlog, deliveries, or fulfillment.",
+    tags:        ["orders", "backlog", "delivery", "fulfillment", "sales orders"],
+    queries:     ["orders"]
+  },
+
+  _charts: {},
+
+  load(data) {
+    const orders   = data.orders || [];
+    const base     = data.webClientBase || '';
+    const links    = data.webClientLinks || {};
+    const company  = data.company || '—';
+    const currency = orders[0]?.DocCurrency || 'DKK';
+    const today    = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const isDemo = !window.__B1_AGENT_CONTROLLED__;
+    document.getElementById('rpt-company').textContent = company;
+    document.getElementById('rpt-badge').textContent   = isDemo ? '● Demo' : '● Live';
+    document.getElementById('rpt-badge').className     = 'badge ' + (isDemo ? 'badge-demo' : 'badge-live');
+    document.getElementById('rpt-meta').textContent    =
+      `${orders.length} open orders · ${new Date().toLocaleDateString('da-DK', { dateStyle: 'medium' })}`;
+    document.getElementById('rpt-ts').textContent =
+      'Generated: ' + new Date().toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' });
+
+    const fmtK = n => {
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+      return n.toLocaleString('da-DK');
+    };
+
+    const daysLate = dueDateStr => {
+      if (!dueDateStr) return 0;
+      const [y, m, d] = dueDateStr.split('-').map(Number);
+      const due = new Date(y, m - 1, d);
+      return Math.floor((today - due) / 86400000);
+    };
+
+    const enriched = orders.map(r => {
+      const late = daysLate(r.DocDueDate);
+      return { ...r, _daysLate: late };
+    });
+
+    const totalBacklog = enriched.reduce((s, r) => s + (r.DocTotal || 0), 0);
+    const pastDueCount = enriched.filter(r => r._daysLate > 0).length;
+    const totalDaysOpen = enriched.reduce((s, r) => {
+      const orderDate = r.DocDate ? new Date(r.DocDate) : today;
+      return s + Math.max(0, Math.floor((today - orderDate) / 86400000));
+    }, 0);
+    const avgDaysOpen = orders.length ? Math.round(totalDaysOpen / orders.length) : 0;
+
+    document.getElementById('kpi-1').textContent = fmtK(totalBacklog);
+    document.getElementById('kpi-2').textContent = orders.length;
+    document.getElementById('kpi-3').textContent = pastDueCount;
+    document.getElementById('kpi-4').textContent = avgDaysOpen;
+
+    const setDelta = (id, text, cls) => {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'kpi-delta ' + (cls || '');
+    };
+    setDelta('kpi-1-d', currency);
+    setDelta('kpi-2-d', 'awaiting delivery');
+    setDelta('kpi-3-d', pastDueCount > 0 ? '↑ Fulfillment priority' : '✓ All on track', pastDueCount > 0 ? 'down' : 'up');
+    setDelta('kpi-4-d', 'from order date');
+
+    const warningEl = document.getElementById('warning-overdue');
+    if (pastDueCount > 0) {
+      warningEl.textContent = `⚠ ${pastDueCount} order${pastDueCount !== 1 ? 's' : ''} past due date — prioritize fulfillment`;
+      warningEl.classList.add('visible');
+    } else {
+      warningEl.classList.remove('visible');
+    }
+
+    // Backlog by due-week bar chart
+    const weekBuckets = {};
+    enriched.forEach(r => {
+      const due = r.DocDueDate ? new Date(r.DocDueDate) : today;
+      const weekStart = new Date(due);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+      const k = weekStart.toISOString().slice(0, 10);
+      const label = `${weekStart.getDate()}/${weekStart.getMonth() + 1}`;
+      if (!weekBuckets[k]) weekBuckets[k] = { label, value: 0, sort: k, isPast: weekStart < today };
+      weekBuckets[k].value += r.DocTotal || 0;
+    });
+    const barData = Object.values(weekBuckets).sort((a, b) => a.sort.localeCompare(b.sort)).slice(-8);
+
+    if (this._charts.backlog) this._charts.backlog.destroy();
+    this._charts.backlog = new Chart(
+      document.getElementById('chart-backlog').getContext('2d'),
+      {
+        type: 'bar',
+        data: {
+          labels: barData.map(d => d.label),
+          datasets: [{
+            data: barData.map(d => d.value),
+            backgroundColor: barData.map(d => d.isPast ? 'rgba(220,38,38,0.75)' : 'rgba(37,99,235,0.22)'),
+            borderColor: barData.map(d => d.isPast ? 'rgba(220,38,38,1)' : 'rgba(37,99,235,0.45)'),
+            borderWidth: 1,
+            borderRadius: 3
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { display: false }, tooltip: B1Report._tooltipDefaults(currency) },
+          scales: {
+            x: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } },
+            y: { grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false }, border: { display: false, dash: [3,3] }, ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 4 } }
+          }
+        }
+      }
+    );
+
+    // Top customers horizontal bar
+    const custMap = {};
+    enriched.forEach(r => {
+      const k = r.CardCode || '—';
+      if (!custMap[k]) custMap[k] = { name: r.CardName || k, total: 0 };
+      custMap[k].total += r.DocTotal || 0;
+    });
+    const topCust = Object.values(custMap).sort((a, b) => b.total - a.total).slice(0, 6);
+
+    if (this._charts.customers) this._charts.customers.destroy();
+    this._charts.customers = new Chart(
+      document.getElementById('chart-customers').getContext('2d'),
+      {
+        type: 'bar',
+        data: {
+          labels: topCust.map(c => c.name.length > 18 ? c.name.slice(0, 17) + '…' : c.name),
+          datasets: [{
+            data: topCust.map(c => c.total),
+            backgroundColor: 'rgba(37,99,235,0.75)',
+            borderColor: 'rgba(37,99,235,1)',
+            borderWidth: 1, borderRadius: 3
+          }]
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { display: false }, tooltip: B1Report._tooltipDefaults(currency) },
+          scales: {
+            x: { grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false }, border: { display: false, dash: [3,3] }, ticks: { ...B1Report._tickDefaults(), callback: v => fmtK(v), maxTicksLimit: 3 } },
+            y: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } }
+          }
+        }
+      }
+    );
+
+    // Table
+    const tbody = document.getElementById('tbl-body');
+    tbody.innerHTML = '';
+
+    if (!enriched.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">No open orders — backlog is clear</td></tr>';
+      return;
+    }
+
+    const sorted = [...enriched].sort((a, b) => b._daysLate - a._daysLate);
+
+    sorted.forEach(r => {
+      const link = (base && links.order && r.DocEntry)
+        ? base + links.order.replace('{DocEntry}', r.DocEntry) : '';
+
+      const fmtDate = s => s
+        ? new Date(s).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' })
+        : '—';
+
+      const lateLabel = r._daysLate > 0
+        ? `<span style="color:var(--red);font-weight:500">${r._daysLate}</span>`
+        : '<span style="color:var(--green)">—</span>';
+
+      const statusDot = r._daysLate > 14 ? 'dot-red' : r._daysLate > 0 ? 'dot-amber' : 'dot-green';
+      const statusText = r._daysLate > 14 ? 'Critical' : r._daysLate > 0 ? 'Late' : 'On track';
+
+      const tr = document.createElement('tr');
+      tr.onclick = () => { if (link) window.open(link, '_blank'); };
+      tr.innerHTML = `
+        <td>
+          <div class="row-primary">${r.CardName || '—'}</div>
+          <div class="row-secondary">${r.CardCode || ''}</div>
+        </td>
+        <td class="mono muted">${r.DocNum || '—'}</td>
+        <td class="mono muted">${fmtDate(r.DocDate)}</td>
+        <td class="mono muted">${fmtDate(r.DocDueDate)}</td>
+        <td class="r mono">${lateLabel}</td>
+        <td><span class="pill"><span class="dot ${statusDot}"></span>${statusText}</span></td>
+        <td class="r mono">${(r.DocTotal || 0).toLocaleString('da-DK')}</td>
+        <td class="r link-cell">${link ? `<a href="${link}" target="_blank">Open →</a>` : '<span style="color:var(--border)">—</span>'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  },
+
+  _tooltipDefaults(currency) {
+    return { backgroundColor: '#ffffff', borderColor: 'rgba(0,0,0,0.12)', borderWidth: 1, titleColor: '#6b7280', bodyColor: '#1a1d2e', titleFont: { family: "'DM Mono'", size: 10 }, bodyFont: { family: "'DM Mono'", size: 12 }, callbacks: currency ? { label: ctx => ' ' + ctx.raw.toLocaleString('da-DK') + ' ' + currency } : undefined };
+  },
+  _tickDefaults() {
+    return { color: '#6b7280', font: { family: "'DM Mono'", size: 10 } };
+  }
+};
+
+(function demoIfStandalone() {
+  if (window.__B1_AGENT_CONTROLLED__) return;
+
+  const MOCK = {
+    orders: [
+      { DocEntry:501, DocNum:7001, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2026-02-15", DocDueDate:"2026-03-15", DocTotal:184200, DocCurrency:"DKK", DocumentStatus:"bost_Open" },
+      { DocEntry:502, DocNum:7002, CardCode:"C0017", CardName:"Danfoss Group",       DocDate:"2026-02-20", DocDueDate:"2026-03-20", DocTotal:96500,  DocCurrency:"DKK", DocumentStatus:"bost_Open" },
+      { DocEntry:503, DocNum:7003, CardCode:"C0088", CardName:"Vestas Wind Systems", DocDate:"2026-03-01", DocDueDate:"2026-03-22", DocTotal:312000, DocCurrency:"DKK", DocumentStatus:"bost_Open" },
+      { DocEntry:504, DocNum:7004, CardCode:"C0055", CardName:"DSV Panalpina A/S",   DocDate:"2026-03-05", DocDueDate:"2026-04-05", DocTotal:67800,  DocCurrency:"DKK", DocumentStatus:"bost_Open" },
+      { DocEntry:505, DocNum:7005, CardCode:"C0031", CardName:"Arla Foods amba",     DocDate:"2026-03-10", DocDueDate:"2026-04-10", DocTotal:145000, DocCurrency:"DKK", DocumentStatus:"bost_Open" },
+      { DocEntry:506, DocNum:7006, CardCode:"C0099", CardName:"Ørsted A/S",          DocDate:"2026-03-12", DocDueDate:"2026-04-12", DocTotal:88400,  DocCurrency:"DKK", DocumentStatus:"bost_Open" },
+      { DocEntry:507, DocNum:7007, CardCode:"C0063", CardName:"Coloplast A/S",       DocDate:"2026-03-18", DocDueDate:"2026-04-18", DocTotal:52100,  DocCurrency:"DKK", DocumentStatus:"bost_Open" },
+      { DocEntry:508, DocNum:7008, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2026-01-10", DocDueDate:"2026-02-10", DocTotal:215000, DocCurrency:"DKK", DocumentStatus:"bost_Open" },
+      { DocEntry:509, DocNum:7009, CardCode:"C0017", CardName:"Danfoss Group",       DocDate:"2026-02-01", DocDueDate:"2026-03-01", DocTotal:178500, DocCurrency:"DKK", DocumentStatus:"bost_Open" },
+      { DocEntry:510, DocNum:7010, CardCode:"C0088", CardName:"Vestas Wind Systems", DocDate:"2026-03-20", DocDueDate:"2026-04-20", DocTotal:94200,  DocCurrency:"DKK", DocumentStatus:"bost_Open" },
+    ],
+    company: "CRONUS_DK (demo)",
+    webClientBase: "",
+    webClientLinks: { order: "/webapp/index.html#/ORDR/{DocEntry}" }
+  };
+
+  window.B1Report.load(MOCK);
+})();
+</script>
+</body>
+</html>
