@@ -192,7 +192,7 @@
       "queries": [
         {
           "key": "marginData",
-          "sql": "SELECT T0.\"CardCode\", T0.\"CardName\", SUM(T1.\"LineTotal\") AS \"Revenue\", SUM(T1.\"GrossBuyPr\" * T1.\"Quantity\") AS \"TotalCost\", SUM(T1.\"GrssProfit\") AS \"GrossProfit\" FROM OINV T0 INNER JOIN INV1 T1 ON T0.\"DocEntry\" = T1.\"DocEntry\" WHERE T0.\"CANCELED\" = 'N' AND T0.\"DocDate\" >= '{date_6m_ago}' GROUP BY T0.\"CardCode\", T0.\"CardName\" ORDER BY SUM(T1.\"LineTotal\") DESC"
+          "sql": "SELECT T0.\"CardCode\", T0.\"CardName\", SUM(T1.\"LineTotal\") AS \"Revenue\", SUM(T1.\"LineTotal\") - SUM(T1.\"GrssProfit\") AS \"TotalCost\", SUM(T1.\"GrssProfit\") AS \"GrossProfit\" FROM OINV T0 INNER JOIN INV1 T1 ON T0.\"DocEntry\" = T1.\"DocEntry\" WHERE T0.\"CANCELED\" = 'N' AND T0.\"DocDate\" >= '{date_6m_ago}' GROUP BY T0.\"CardCode\", T0.\"CardName\" ORDER BY SUM(T1.\"LineTotal\") DESC"
         }
       ],
       "aiHints": {
