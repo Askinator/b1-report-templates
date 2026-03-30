@@ -30,12 +30,19 @@ The user receives a finished HTML file. Charts are rendered, tables are populate
 
 ```
 b1-report-templates/
-├── manifest.json               ← registry of all templates + their SL queries
-├── _template-starter.html      ← copy this to build a new template
+├── manifest.json                ← registry of all templates + their SL queries
+├── _template-starter.html       ← copy this to build a new template
 ├── sales-performance.html
 ├── ar-aging.html
 ├── inventory-levels.html
-└── purchase-spend.html
+├── purchase-spend.html
+├── open-sales-orders.html
+├── ap-payment-schedule.html
+├── credit-limit-exposure.html
+├── gross-margin.html
+├── quotation-pipeline.html
+├── returns-credit-notes.html
+└── slow-moving-inventory.html
 ```
 
 ---
@@ -65,10 +72,12 @@ window.B1Report = {
   },
 
   load(data) {
-    // data.primaryData   = SL value array
-    // data.secondaryData = SL value array or SQL result
+    // data.primaryData   = rows from the OData or SQL query
+    // data.secondaryData = rows from the second query
     // data.company       = string e.g. "CRONUS_DK"
+    // data.currency      = string e.g. "DKK"
     // data.webClientBase = base URL e.g. "https://sap-server:8080"
+    // data.deeplinks     = deeplink definitions from manifest (see below)
     //
     // Render charts, populate tables, build deeplinks here.
     // This may be called more than once (e.g. refresh) — destroy
@@ -87,57 +96,74 @@ So the template opens correctly in a browser without a live SL connection — us
   window.B1Report.load({
     primaryData: [ /* realistic mock rows */ ],
     company: "DEMO_DB (demo)",
-    webClientBase: "https://your-sap-server:8080"
+    currency: "DKK",
+    webClientBase: "",
+    deeplinks: { invoice: { objName: "Invoices", key: "DocEntry" } }
   });
 })();
 ```
 
 ### 4. Build SAP Web Client deeplinks
 
-Use `data.webClientBase` so links point to the right server:
+Deeplinks are built using `buildObjectUrl`, which is injected by the agent. Use the `sapLink` helper pattern to look up the right definition from `data.deeplinks`:
 
 ```js
-// Invoice deeplink
-const url = `${data.webClientBase}/webapp/index.html#/OINV/${row.DocEntry}`;
-link.href = url;
+const sapLink = (type, value) => {
+  const def = deeplinks[type];
+  if (!def || !value) return '';
+  return B1Report.buildObjectUrl(def.objName, value);
+};
 
-// Customer deeplink
-const url = `${data.webClientBase}/webapp/index.html#/OCRD/${row.CardCode}`;
+// In your table rows:
+const link = sapLink('invoice', row.DocEntry);
+tr.onclick = () => { if (link) window.open(link, '_blank'); };
 ```
 
-Common SAP Web Client URL patterns:
+Deeplink types available by default (defined in `manifest.json` under `deeplinks`):
 
-| Object | URL pattern |
+| Key | Object |
 |---|---|
-| Invoice (OINV) | `/webapp/index.html#/OINV/{DocEntry}` |
-| Customer (OCRD) | `/webapp/index.html#/OCRD/{CardCode}` |
-| Purchase order (OPOR) | `/webapp/index.html#/OPOR/{DocEntry}` |
-| Item (OITM) | `/webapp/index.html#/OITM/{ItemCode}` |
-| Delivery (ODLN) | `/webapp/index.html#/ODLN/{DocEntry}` |
+| `invoice` | Sales invoice (OINV) |
+| `customer` | Business partner (OCRD) |
+| `purchaseOrder` | Purchase order (OPOR) |
+| `purchaseInvoice` | Purchase invoice (OPCH) |
+| `item` | Item master (OITM) |
+| `payment` | Incoming payment (ORCT) |
+| `order` | Sales order (ORDR) |
+| `quotation` | Quotation (OQUT) |
+| `creditNote` | Credit note (ORIN) |
+
+All deeplinks are resolved server-side — the template doesn't need to know or hardcode SAP Web Client URL patterns.
 
 ### 5. Register in manifest.json
 
 ```json
 {
   "id": "my-new-report",
+  "type": "standalone",
   "name": "My new report",
   "description": "What this report shows — the AI reads this to pick the right template",
-  "url": "https://<your-username>.github.io/b1-report-templates/my-new-report.html",
   "tags": ["keyword1", "keyword2"],
   "queries": [
     {
       "key": "primaryData",
-      "endpoint": "OINV",
-      "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,PaidToDate,DocCur,DocStatus",
-      "filter": "DocDate ge '{date_6m_ago}' and Canceled eq 'N'",
+      "endpoint": "Invoices",
+      "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,PaidToDate,DocCurrency,DocumentStatus",
+      "filter": "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
       "orderby": "DocDate desc",
       "top": 200
     },
     {
-      "key": "secondaryData",
-      "sql": "SELECT MONTH(T0.\"DocDate\") AS Mo, SUM(T0.\"DocTotal\") AS Revenue FROM OINV T0 WHERE T0.\"DocDate\" >= DATEADD(MONTH,-6,GETDATE()) GROUP BY MONTH(T0.\"DocDate\")"
+      "key": "summary",
+      "sql": "SELECT T0.\"CardCode\", SUM(T0.\"DocTotal\") AS \"Total\" FROM OINV T0 WHERE T0.\"CANCELED\" = 'N' GROUP BY T0.\"CardCode\""
     }
-  ]
+  ],
+  "aiHints": {
+    "kpis": ["total revenue", "invoice count"],
+    "charts": ["monthly revenue bar", "status donut"],
+    "tables": ["all invoices sorted by date"],
+    "deeplinks": ["invoice by DocEntry", "customer by CardCode"]
+  }
 }
 ```
 
@@ -157,59 +183,96 @@ Live in ~30 seconds. No client update needed.
 
 ```jsonc
 {
-  "version": 1,
-  "updated": "2025-03-27",
-  "templates": [
+  "version": 1.2,
+  "updated": "2026-03-29",
+
+  // Global deeplink type definitions — passed to every template as data.deeplinks
+  "deeplinks": {
+    "invoice": { "objName": "Invoices", "key": "DocEntry" }
+    // key    = name used in sapLink() calls inside templates
+    // objName = Service Layer entity name used by buildObjectUrl()
+  },
+
+  "reports": [
     {
       "id": "string",           // unique slug — matches meta.id in the HTML file
+      "type": "standalone",     // currently always "standalone"
       "name": "string",         // short display name
       "description": "string",  // used by LLM for intent matching — be descriptive
-      "url": "string",          // full GitHub Pages URL to the .html file
       "tags": ["string"],       // keywords to help intent matching
       "queries": [
         // OData entity query
         {
           "key": "string",      // key in data object passed to load()
-          "endpoint": "OINV",   // SL entity
+          "endpoint": "Invoices", // SL entity name (e.g. Invoices, BusinessPartners)
           "select": "...",      // $select
-          "filter": "...",      // $filter — supports placeholders (see below)
+          "filter": "...",      // $filter — supports date placeholders (see below)
           "orderby": "...",     // $orderby
           "top": 100            // $top
         },
-        // SQL query (for aggregations and joins)
+        // SQL query (for aggregations or joins not possible via OData)
         {
           "key": "string",
-          "sql": "SELECT ..."
+          "sql": "SELECT ..."   // see SQL restrictions below
         }
-      ]
+      ],
+      "aiHints": {
+        "kpis": ["string"],     // KPI descriptions for AI context
+        "charts": ["string"],   // chart descriptions for AI context
+        "tables": ["string"],   // table descriptions for AI context
+        "warn": {},             // threshold values that trigger warnings
+        "deeplinks": ["string"],// which deeplinks this report uses
+        "compute": "string",    // note any values derived in JS, not from SL
+        "notes": "string"       // any other relevant notes for the AI
+      }
     }
   ]
 }
 ```
 
-### Filter placeholders
+### Date placeholders
+
+Supported in both OData `filter` and SQL `sql` fields:
 
 | Placeholder | Value |
 |---|---|
-| `{date_6m_ago}` | ISO date 6 months before today |
-| `{date_3m_ago}` | ISO date 3 months before today |
-| `{date_1m_ago}` | ISO date 1 month before today |
-| `{date_1y_ago}` | ISO date 1 year before today |
 | `{today}` | Today's ISO date |
+| `{date_1m_ago}` | ISO date 1 month before today |
+| `{date_3m_ago}` | ISO date 3 months before today |
+| `{date_6m_ago}` | ISO date 6 months before today |
+| `{date_1y_ago}` | ISO date 1 year before today |
+
+### SQL query restrictions
+
+The SAP Business One Service Layer SQL query endpoint has a restricted parser. Avoid:
+
+- **Arithmetic inside aggregate functions** — `SUM(col1 * col2)` is rejected. Compute derived values in JavaScript instead, or use a wrapping subquery.
+- **Arithmetic between aggregates in SELECT** — `SUM(col1) - SUM(col2)` is also rejected. Again, derive in JS.
+- **`ORDER BY` after `GROUP BY`** — rejected by the parser. Sort results in JavaScript.
+
+For columns that require arithmetic (e.g. cost = revenue − gross profit), return the raw aggregates from SQL and compute the derived value in `load()`.
 
 ---
 
-## What the agent passes to load()
+## What the agent passes to `load()`
 
 ```js
 {
-  // One key per query defined in the manifest, populated with SL response .value arrays
-  invoices: [ { DocEntry, DocNum, CardName, DocTotal, ... }, ... ],
-  monthly:  [ { Mo, Yr, Revenue }, ... ],
+  // One key per query defined in the manifest
+  invoices:  [ { DocEntry, DocNum, CardName, DocTotal, ... }, ... ],  // OData rows
+  summary:   [ { CardCode, Total }, ... ],                            // SQL rows
 
   // Always included
-  company:       "CRONUS_DK",            // current company DB name
-  webClientBase: "https://sap:8080"      // base URL for building deeplinks
+  company:       "CRONUS_DK",         // current company DB name
+  currency:      "DKK",               // company default currency
+  webClientBase: "https://sap:8080",  // base URL for building deeplinks
+
+  // Deeplink definitions from manifest — use with sapLink() helper
+  deeplinks: {
+    invoice:  { objName: "Invoices",        key: "DocEntry" },
+    customer: { objName: "BusinessPartners", key: "CardCode" },
+    // ... all entries from manifest.json deeplinks
+  }
 }
 ```
 
@@ -217,12 +280,19 @@ Live in ~30 seconds. No client update needed.
 
 ## Current templates
 
-| ID | Name | Covers |
-|---|---|---|
-| `sales-performance` | Sales performance | Revenue, top customers, invoice status (OINV) |
-| `ar-aging` | AR aging | Overdue buckets, collections priority (OINV open) |
-| `inventory-levels` | Inventory levels | Stock on hand, reorder alerts (OITW, OITM) |
-| `purchase-spend` | Purchase & vendor spend | PO volume, top vendors (OPOR) |
+| ID | Name | Data source | Covers |
+|---|---|---|---|
+| `sales-performance` | Sales performance | OData | Revenue trend, top customers, invoice status — rolling 6 months |
+| `ar-aging` | AR aging | OData | Receivables split into aging buckets: current, 1–30, 31–60, 61–90, 90+ days |
+| `inventory-levels` | Inventory levels | OData | Stock on hand by item, reorder alerts for items below minimum |
+| `purchase-spend` | Purchase & vendor spend | OData | PO volume and vendor spend — rolling 6 months |
+| `open-sales-orders` | Open sales orders | OData | Delivery backlog, days late, fulfillment priority |
+| `ap-payment-schedule` | AP payment schedule | OData | Vendor invoices due in 7/14/30 days + overdue |
+| `credit-limit-exposure` | Credit limit exposure | OData | Customers approaching or exceeding credit limit |
+| `gross-margin` | Gross margin by customer | SQL | Customer profitability: revenue, cost, margin % — flags below-threshold customers |
+| `quotation-pipeline` | Quotation pipeline | OData | Open quotes not yet converted, age, expiry tracking |
+| `returns-credit-notes` | Returns & credit notes | OData | AR credit notes, return trends, repeat customers — rolling 6 months |
+| `slow-moving-inventory` | Slow-moving inventory | SQL | Items with stock but no recent sales, tied-up capital |
 
 ---
 
@@ -230,9 +300,10 @@ Live in ~30 seconds. No client update needed.
 
 All templates share the same visual language so reports look consistent regardless of which one is used:
 
-- Dark theme — `#0f1117` background
+- Light theme — `#f0f2f7` background, `#ffffff` card surfaces
 - Fonts — DM Sans (UI) + DM Mono (numbers, codes, labels)
 - Charts — Chart.js 4, consistent tooltip and axis styling
-- Colour coding — blue (primary metric), green (positive/paid), amber (warning/open), red (overdue/danger)
+- Colour coding — blue (primary metric), green (positive/healthy), amber (warning/open), red (overdue/danger)
+- KPI cards have a 2px colour stripe at the top matching the metric's semantic colour
 - Every record in a table links to the corresponding SAP Web Client screen
 - Templates are fully self-contained single-file HTML — no build step, no external dependencies at runtime

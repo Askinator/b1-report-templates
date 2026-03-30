@@ -349,14 +349,51 @@ tbody td.muted { color: var(--muted); }
 <script>
 // ═══════════════════════════════════════════════════════════════════
 //  B1Report contract
-//  The agent sets window.__B1_AGENT_CONTROLLED__ = true before
-//  calling load(). Templates must not break if load() is called
-//  more than once (e.g. on refresh).
+//
+//  The agent sets window.__B1_AGENT_CONTROLLED__ = true, then calls
+//  load(data) with the query results from the manifest.
+//
+//  load() must be idempotent — the agent may call it more than once
+//  (e.g. on refresh). Destroy and recreate Chart.js instances rather
+//  than appending to the DOM.
+//
+//  Register this template in manifest.json:
+//
+//    {
+//      "id": "my-report-id",
+//      "type": "standalone",
+//      "name": "My report name",
+//      "description": "...",
+//      "tags": ["tag1", "tag2"],
+//      "queries": [
+//        {
+//          "key": "rows",
+//          "endpoint": "Invoices",
+//          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal",
+//          "filter": "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
+//          "orderby": "DocDate desc",
+//          "top": 200
+//        },
+//        {
+//          "key": "summary",
+//          "sql": "SELECT T0.\"CardCode\", SUM(T0.\"DocTotal\") AS \"Total\" FROM OINV T0 GROUP BY T0.\"CardCode\""
+//          // SQL restrictions: no arithmetic inside or between aggregates in SELECT
+//          // (e.g. SUM(a * b) and SUM(a) - SUM(b) are both rejected).
+//          // No ORDER BY after GROUP BY. Derive calculated columns in load() instead.
+//        }
+//      ],
+//      "aiHints": {
+//        "kpis": ["total revenue", "invoice count"],
+//        "charts": ["monthly revenue bar", "status donut"],
+//        "tables": ["all invoices sorted by date"],
+//        "deeplinks": ["invoice by DocEntry", "customer by CardCode"]
+//      }
+//    }
 // ═══════════════════════════════════════════════════════════════════
 window.B1Report = {
 
   meta: {
-    id:          "my-report-id",          // ← unique slug, matches manifest
+    id:          "my-report-id",          // ← unique slug, matches manifest id
     name:        "My report name",        // ← display name
     description: "What this report shows and when to use it — the AI reads this for intent matching",
     tags:        ["tag1", "tag2"],        // ← keywords for intent matching
@@ -369,10 +406,13 @@ window.B1Report = {
   load(data) {
     // ── Unpack ────────────────────────────────────────────────
     const rows      = data.rows    || [];
-    const base      = data.webClientBase || '';
     const deeplinks = data.deeplinks || {};
     const company   = data.company || '—';
+    const currency  = data.currency || 'DKK';
 
+    // sapLink(type, value) — builds a SAP Web Client deeplink.
+    // Types are defined in manifest.json under "deeplinks".
+    // Returns '' if the type is not defined or value is falsy.
     const sapLink = (type, value) => {
       const def = deeplinks[type];
       if (!def || !value) return '';
@@ -448,7 +488,7 @@ window.B1Report = {
           maintainAspectRatio: true,
           plugins: {
             legend: { display: false },
-            tooltip: B1Report._tooltipDefaults(rows[0]?.DocCurrency || 'DKK')
+            tooltip: B1Report._tooltipDefaults(rows[0]?.DocCurrency || currency)
           },
           scales: {
             x: { grid: { display: false }, ticks: B1Report._tickDefaults(), border: { display: false } },
@@ -587,9 +627,11 @@ window.B1Report = {
       { DocEntry:8, DocNum:4814, CardCode:"C0042", CardName:"Novo Industri A/S",       DocDate:"2025-02-05", DocDueDate:"2025-03-05", DocTotal:56700,  PaidToDate:56700,  DocCurrency:"DKK", DocumentStatus:"bost_Close", Cancelled:"tNO" },
     ],
     company:       "CRONUS_DK (demo)",
+    currency:      "DKK",
     webClientBase: "",
     deeplinks: {
-      invoice: { objName: "Invoices", key: "DocEntry" }
+      invoice:  { objName: "Invoices",         key: "DocEntry" },
+      customer: { objName: "BusinessPartners",  key: "CardCode" }
     }
   };
 
