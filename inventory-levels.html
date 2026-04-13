@@ -325,7 +325,7 @@ tbody td.muted { color: var(--muted); }
   <div class="card">
     <div class="card-header">
       <span class="card-title">Top Items by Stock Value</span>
-      <span class="card-hint">OITM."OnHand × LastPurchasePrice" · top 15</span>
+      <span class="card-hint">QuantityOnStock × MovingAveragePrice · top 15</span>
     </div>
     <canvas id="chart-value" height="220"></canvas>
   </div>
@@ -342,7 +342,7 @@ tbody td.muted { color: var(--muted); }
 <div class="card">
   <div class="card-header">
     <span class="card-title">Inventory Detail</span>
-    <span class="card-hint">OITM · sorted by status (out → low → ok)</span>
+    <span class="card-hint">Items · sorted by status (out → low → ok)</span>
   </div>
   <table>
     <thead>
@@ -378,7 +378,7 @@ window.B1Report = {
   meta: {
     id:          "inventory-levels",
     name:        "Inventory levels",
-    description: "Stock on hand by item and warehouse, reorder alerts for items below MinLevel, slow movers. Use when user asks about stock, inventory, warehouse, or items.",
+    description: "Inventory status by item using QuantityOnStock and warehouse InStock, with reorder alerts based on MinInventory or warehouse MinimalStock.",
     tags:        ["inventory", "stock", "warehouse", "items", "reorder"],
     queries:     ["items"]
   },
@@ -416,9 +416,26 @@ window.B1Report = {
 
     const totalOnHand = item => {
       const wh = item.ItemWarehouseInfoCollection || [];
-      if (wh.length === 0) return item.OnHand || 0;
-      return wh.reduce((s, w) => s + (w.InStock || 0), 0);
+      if (wh.length > 0) {
+        return wh.reduce((s, w) => s + Number(w.InStock || 0), 0);
+      }
+      return Number(item.QuantityOnStock || 0);
     };
+
+    const totalMinStock = item => {
+      const wh = item.ItemWarehouseInfoCollection || [];
+      const whMin = wh.reduce((s, w) => s + Number(w.MinimalStock || 0), 0);
+      return whMin > 0 ? whMin : Number(item.MinInventory || 0);
+    };
+
+    const totalMaxStock = item => {
+      const wh = item.ItemWarehouseInfoCollection || [];
+      const whMax = wh.reduce((s, w) => s + Number(w.MaximalStock || 0), 0);
+      return whMax > 0 ? whMax : Number(item.MaxInventory || 0);
+    };
+
+    const valuationPrice = item =>
+      Number(item.MovingAveragePrice || item.AvgStdPrice || item.ProdStdCost || 0);
 
     const stockStatus = (onHand, min) => {
       if (onHand <= 0)      return { key: 'out', label: 'Out of stock', dot: 'dot-red' };
@@ -429,13 +446,22 @@ window.B1Report = {
     // ── Enrich items ──────────────────────────────────────────
     const enriched = items.map(item => {
       const onHand     = totalOnHand(item);
-      const min        = item.MinInventory || 0;
-      const max        = item.MaxInventory || 0;
-      const price      = item.LastPurchasePrice || 0;
+      const min        = totalMinStock(item);
+      const max        = totalMaxStock(item);
+      const price      = valuationPrice(item);
       const stockValue = onHand * price;
       const gap        = Math.max(0, min - onHand);
       const status     = stockStatus(onHand, min);
-      return { ...item, _onHand: onHand, _min: min, _max: max, _stockValue: stockValue, _gap: gap, _status: status };
+      return {
+        ...item,
+        _onHand: onHand,
+        _min: min,
+        _max: max,
+        _price: price,
+        _stockValue: stockValue,
+        _gap: gap,
+        _status: status
+      };
     });
 
     // ── KPI calculations ──────────────────────────────────────
@@ -454,7 +480,7 @@ window.B1Report = {
       el.className = 'kpi-delta ' + (cls || '');
     };
     setDelta('kpi-1-d', 'active inventory items');
-    setDelta('kpi-2-d', 'OnHand × Last Purchase Price');
+    setDelta('kpi-2-d', 'QuantityOnStock × Moving Average Price');
     setDelta('kpi-3-d', belowReorder > 0 ? '↑ Reorder required' : '✓ All stocked', belowReorder > 0 ? 'down' : 'up');
     setDelta('kpi-4-d', outOfStock > 0 ? '↑ Immediate action' : '✓ None', outOfStock > 0 ? 'down' : 'up');
 
@@ -629,28 +655,28 @@ window.B1Report = {
   const MOCK = {
     items: [
       // OK items
-      { ItemCode:"ITM-0021", ItemName:"Industrial Pump Seal Kit",    MinInventory:10, MaxInventory:100, LastPurchasePrice:485,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:64 },{ WarehouseCode:"02", InStock:18 }] },
-      { ItemCode:"ITM-0034", ItemName:"Hydraulic Cylinder 80mm",     MinInventory:5,  MaxInventory:40,  LastPurchasePrice:1240,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:22 }] },
-      { ItemCode:"ITM-0058", ItemName:"Bearing Assembly Type B",     MinInventory:20, MaxInventory:200, LastPurchasePrice:127,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:145 },{ WarehouseCode:"03", InStock:30 }] },
-      { ItemCode:"ITM-0072", ItemName:"Stainless Steel Valve DN50",  MinInventory:8,  MaxInventory:60,  LastPurchasePrice:890,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:31 }] },
-      { ItemCode:"ITM-0091", ItemName:"Control Panel 24V DC",        MinInventory:3,  MaxInventory:20,  LastPurchasePrice:3450,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:9 }] },
-      { ItemCode:"ITM-0103", ItemName:"O-Ring Set EPDM 100pcs",      MinInventory:50, MaxInventory:500, LastPurchasePrice:38,    ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:320 },{ WarehouseCode:"02", InStock:80 }] },
-      { ItemCode:"ITM-0115", ItemName:"Pneumatic Fitting 12mm",      MinInventory:100,MaxInventory:800, LastPurchasePrice:14,    ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:512 }] },
-      { ItemCode:"ITM-0128", ItemName:"Motor Drive VFD 7.5kW",       MinInventory:2,  MaxInventory:12,  LastPurchasePrice:8200,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:5 }] },
-      { ItemCode:"ITM-0144", ItemName:"Safety Relay Module",         MinInventory:5,  MaxInventory:30,  LastPurchasePrice:620,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:17 }] },
-      { ItemCode:"ITM-0162", ItemName:"Proximity Sensor NPN 10mm",   MinInventory:10, MaxInventory:80,  LastPurchasePrice:185,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:48 },{ WarehouseCode:"02", InStock:12 }] },
-      { ItemCode:"ITM-0177", ItemName:"Conveyor Belt 2000×400mm",    MinInventory:2,  MaxInventory:15,  LastPurchasePrice:4100,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:7 }] },
-      { ItemCode:"ITM-0189", ItemName:"Compressed Air Filter 1/2\"", MinInventory:15, MaxInventory:120, LastPurchasePrice:145,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:66 }] },
+      { ItemCode:"ITM-0021", ItemName:"Industrial Pump Seal Kit",    MinInventory:10, MaxInventory:100, MovingAveragePrice:485,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:64 },{ WarehouseCode:"02", InStock:18 }] },
+      { ItemCode:"ITM-0034", ItemName:"Hydraulic Cylinder 80mm",     MinInventory:5,  MaxInventory:40,  MovingAveragePrice:1240,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:22 }] },
+      { ItemCode:"ITM-0058", ItemName:"Bearing Assembly Type B",     MinInventory:20, MaxInventory:200, MovingAveragePrice:127,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:145 },{ WarehouseCode:"03", InStock:30 }] },
+      { ItemCode:"ITM-0072", ItemName:"Stainless Steel Valve DN50",  MinInventory:8,  MaxInventory:60,  MovingAveragePrice:890,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:31 }] },
+      { ItemCode:"ITM-0091", ItemName:"Control Panel 24V DC",        MinInventory:3,  MaxInventory:20,  MovingAveragePrice:3450,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:9 }] },
+      { ItemCode:"ITM-0103", ItemName:"O-Ring Set EPDM 100pcs",      MinInventory:50, MaxInventory:500, MovingAveragePrice:38,    ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:320 },{ WarehouseCode:"02", InStock:80 }] },
+      { ItemCode:"ITM-0115", ItemName:"Pneumatic Fitting 12mm",      MinInventory:100,MaxInventory:800, MovingAveragePrice:14,    ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:512 }] },
+      { ItemCode:"ITM-0128", ItemName:"Motor Drive VFD 7.5kW",       MinInventory:2,  MaxInventory:12,  MovingAveragePrice:8200,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:5 }] },
+      { ItemCode:"ITM-0144", ItemName:"Safety Relay Module",         MinInventory:5,  MaxInventory:30,  MovingAveragePrice:620,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:17 }] },
+      { ItemCode:"ITM-0162", ItemName:"Proximity Sensor NPN 10mm",   MinInventory:10, MaxInventory:80,  MovingAveragePrice:185,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:48 },{ WarehouseCode:"02", InStock:12 }] },
+      { ItemCode:"ITM-0177", ItemName:"Conveyor Belt 2000×400mm",    MinInventory:2,  MaxInventory:15,  MovingAveragePrice:4100,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:7 }] },
+      { ItemCode:"ITM-0189", ItemName:"Compressed Air Filter 1/2\"", MinInventory:15, MaxInventory:120, MovingAveragePrice:145,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:66 }] },
       // Below min items
-      { ItemCode:"ITM-0205", ItemName:"Heat Exchanger Gasket Set",   MinInventory:20, MaxInventory:100, LastPurchasePrice:215,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:7 }] },
-      { ItemCode:"ITM-0218", ItemName:"Solenoid Valve 24VDC",        MinInventory:10, MaxInventory:60,  LastPurchasePrice:560,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:3 }] },
-      { ItemCode:"ITM-0231", ItemName:"Pressure Transmitter 0-10bar",MinInventory:5,  MaxInventory:25,  LastPurchasePrice:1850,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:2 }] },
-      { ItemCode:"ITM-0245", ItemName:"Coupling Spider PU 65mm",     MinInventory:8,  MaxInventory:50,  LastPurchasePrice:98,    ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:1 }] },
-      { ItemCode:"ITM-0258", ItemName:"Cable Gland M20 Stainless",   MinInventory:50, MaxInventory:300, LastPurchasePrice:22,    ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:18 },{ WarehouseCode:"02", InStock:5 }] },
+      { ItemCode:"ITM-0205", ItemName:"Heat Exchanger Gasket Set",   MinInventory:20, MaxInventory:100, MovingAveragePrice:215,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:7 }] },
+      { ItemCode:"ITM-0218", ItemName:"Solenoid Valve 24VDC",        MinInventory:10, MaxInventory:60,  MovingAveragePrice:560,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:3 }] },
+      { ItemCode:"ITM-0231", ItemName:"Pressure Transmitter 0-10bar",MinInventory:5,  MaxInventory:25,  MovingAveragePrice:1850,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:2 }] },
+      { ItemCode:"ITM-0245", ItemName:"Coupling Spider PU 65mm",     MinInventory:8,  MaxInventory:50,  MovingAveragePrice:98,    ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:1 }] },
+      { ItemCode:"ITM-0258", ItemName:"Cable Gland M20 Stainless",   MinInventory:50, MaxInventory:300, MovingAveragePrice:22,    ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:18 },{ WarehouseCode:"02", InStock:5 }] },
       // Out of stock items
-      { ItemCode:"ITM-0274", ItemName:"Flow Meter DN25 Ultrasonic",  MinInventory:3,  MaxInventory:15,  LastPurchasePrice:6400,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:0 }] },
-      { ItemCode:"ITM-0289", ItemName:"PLC Module Analog 4ch",       MinInventory:2,  MaxInventory:10,  LastPurchasePrice:2850,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:0 },{ WarehouseCode:"02", InStock:0 }] },
-      { ItemCode:"ITM-0301", ItemName:"Flexible Conduit 25mm 50m",   MinInventory:10, MaxInventory:60,  LastPurchasePrice:310,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:0 }] },
+      { ItemCode:"ITM-0274", ItemName:"Flow Meter DN25 Ultrasonic",  MinInventory:3,  MaxInventory:15,  MovingAveragePrice:6400,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:0 }] },
+      { ItemCode:"ITM-0289", ItemName:"PLC Module Analog 4ch",       MinInventory:2,  MaxInventory:10,  MovingAveragePrice:2850,  ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:0 },{ WarehouseCode:"02", InStock:0 }] },
+      { ItemCode:"ITM-0301", ItemName:"Flexible Conduit 25mm 50m",   MinInventory:10, MaxInventory:60,  MovingAveragePrice:310,   ItemWarehouseInfoCollection:[{ WarehouseCode:"01", InStock:0 }] },
     ],
     company:       "CRONUS_DK (demo)",
     webClientBase: "",
