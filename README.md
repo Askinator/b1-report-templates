@@ -17,7 +17,7 @@ The consuming program hardcodes only that one URL. Template updates and new repo
 1. Program fetches manifest.json         → discovers available templates
 2. Matches user intent to a template     → by id, tags, or description
 3. Fetches the template HTML             → pre-designed, pre-built
-4. Reads window.B1Report.meta            → validates template id + query definitions
+4. Reads <script id="b1report-meta">     → validates template id + query definitions
 5. Runs the SL queries from the HTML     → gets live JSON data
 6. Calls window.B1Report.load(data)      → template renders itself
 7. Delivers the HTML file to the user    → self-contained, no runtime deps
@@ -58,31 +58,39 @@ cp _template-starter.html my-new-report.html
 
 ### 2. Build the report
 
-Every template must expose `window.B1Report` with this contract:
+Every template must expose two things:
+
+**1. A JSON meta block in `<head>`** — strict JSON, parsed by the extension (CSP disallows `eval`):
+
+```html
+<script type="application/json" id="b1report-meta">
+{
+  "id": "my-new-report",
+  "name": "Human readable name",
+  "description": "Shown to the AI for intent matching",
+  "tags": ["keyword1", "keyword2"],
+  "queries": [
+    {
+      "key": "primaryData",
+      "endpoint": "Invoices",
+      "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal",
+      "filter": "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
+      "orderby": "DocDate desc",
+      "top": 200
+    },
+    {
+      "key": "summary",
+      "sql": "SELECT T0.\"CardCode\", SUM(T0.\"DocTotal\") AS \"Total\" FROM OINV T0 WHERE T0.\"CANCELED\" = 'N' GROUP BY T0.\"CardCode\""
+    }
+  ]
+}
+</script>
+```
+
+**2. A `window.B1Report.load(data)` function** that renders the template:
 
 ```js
 window.B1Report = {
-  meta: {
-    id: "my-new-report",
-    name: "Human readable name",
-    description: "Shown to the AI for intent matching",
-    tags: ["keyword1", "keyword2"],
-    queries: [
-      {
-        key: "primaryData",
-        endpoint: "Invoices",
-        select: "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal",
-        filter: "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
-        orderby: "DocDate desc",
-        top: 200
-      },
-      {
-        key: "summary",
-        sql: "SELECT T0.\"CardCode\", SUM(T0.\"DocTotal\") AS \"Total\" FROM OINV T0 WHERE T0.\"CANCELED\" = 'N' GROUP BY T0.\"CardCode\""
-      }
-    ]
-  },
-
   load(data) {
     // data.primaryData = rows from the first query
     // data.summary     = rows from the second query
@@ -95,9 +103,9 @@ window.B1Report = {
 
 Rules:
 
-- `meta.id` must match the HTML filename and the manifest report id.
-- `meta.queries` must contain full query objects.
-- String references such as `queries: ["rows"]` are invalid.
+- `id` must match the HTML filename and the manifest report id.
+- `queries` must contain full query objects.
+- String references such as `"queries": ["rows"]` are invalid.
 - Each query must define either `endpoint` or `sql`.
 
 ### 3. Add demo mode
@@ -165,7 +173,7 @@ git push
 
 ### Query field reference
 
-Runtime query definitions live in `window.B1Report.meta.queries` inside each HTML template.
+Runtime query definitions live in the `<script id="b1report-meta">` JSON block inside each HTML template.
 
 ```jsonc
 [

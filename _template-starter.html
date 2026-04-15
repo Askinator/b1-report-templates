@@ -4,6 +4,31 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>B1 Report</title>
+<script type="application/json" id="b1report-meta">
+{
+  "id": "my-report-id",
+  "name": "My report name",
+  "description": "What this report shows and when to use it — the AI reads this for intent matching",
+  "tags": [
+    "tag1",
+    "tag2"
+  ],
+  "queries": [
+    {
+      "key": "rows",
+      "endpoint": "Invoices",
+      "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,DocCurrency",
+      "filter": "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
+      "orderby": "DocDate desc",
+      "top": 200
+    },
+    {
+      "key": "summary",
+      "sql": "SELECT T0.\"CardCode\", SUM(T0.\"DocTotal\") AS \"Total\" FROM OINV T0 WHERE T0.\"CANCELED\" = 'N' GROUP BY T0.\"CardCode\""
+    }
+  ]
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
@@ -351,8 +376,8 @@ tbody td.muted { color: var(--muted); }
 //  B1Report contract
 //
 //  The agent sets window.__B1_AGENT_CONTROLLED__ = true, reads
-//  window.B1Report.meta.queries from this HTML file, runs them,
-//  then calls load(data) with the query results.
+//  the <script id="b1report-meta"> JSON block from this HTML file,
+//  runs its queries, then calls load(data) with the results.
 //
 //  load() must be idempotent — the agent may call it more than once
 //  (e.g. on refresh). Destroy and recreate Chart.js instances rather
@@ -370,26 +395,6 @@ tbody td.muted { color: var(--muted); }
 // ═══════════════════════════════════════════════════════════════════
 window.B1Report = {
 
-  meta: {
-    id:          "my-report-id",          // ← unique slug, matches manifest id
-    name:        "My report name",        // ← display name
-    description: "What this report shows and when to use it — the AI reads this for intent matching",
-    tags:        ["tag1", "tag2"],        // ← keywords for intent matching
-    queries: [
-      {
-        key: "rows",
-        endpoint: "Invoices",
-        select: "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,DocCurrency",
-        filter: "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
-        orderby: "DocDate desc",
-        top: 200
-      },
-      {
-        key: "summary",
-        sql: "SELECT T0.\"CardCode\", SUM(T0.\"DocTotal\") AS \"Total\" FROM OINV T0 WHERE T0.\"CANCELED\" = 'N' GROUP BY T0.\"CardCode\""
-      }
-    ]
-  },
 
   // Chart references — stored so they can be destroyed on reload
   _charts: {},

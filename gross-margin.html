@@ -4,6 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gross Margin · B1 Report</title>
+<script type="application/json" id="b1report-meta">
+{
+  "id": "gross-margin",
+  "name": "Gross margin by customer",
+  "description": "Customer profitability analysis showing revenue, cost, gross profit and margin %. Flags customers below margin threshold. Use when user asks about margins, profitability, cost analysis, or pricing.",
+  "tags": [
+    "margin",
+    "profitability",
+    "gross profit",
+    "cost",
+    "pricing"
+  ],
+  "queries": [
+    {
+      "key": "marginData",
+      "sql": "SELECT T0.\"CardCode\", T0.\"CardName\", SUM(T1.\"LineTotal\") AS \"Revenue\", SUM(T1.\"GrssProfit\") AS \"GrossProfit\" FROM OINV T0 INNER JOIN INV1 T1 ON T0.\"DocEntry\" = T1.\"DocEntry\" WHERE T0.\"CANCELED\" = 'N' AND T0.\"DocDate\" >= '{date_6m_ago}' GROUP BY T0.\"CardCode\", T0.\"CardName\""
+    }
+  ]
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
@@ -180,18 +200,6 @@ tbody td.muted { color: var(--muted); }
 <script>
 window.B1Report = {
 
-  meta: {
-    id:          "gross-margin",
-    name:        "Gross margin by customer",
-    description: "Customer profitability analysis showing revenue, cost, gross profit and margin %. Flags customers below margin threshold. Use when user asks about margins, profitability, cost analysis, or pricing.",
-    tags:        ["margin", "profitability", "gross profit", "cost", "pricing"],
-    queries: [
-      {
-        key: "marginData",
-        sql: "SELECT T0.\"CardCode\", T0.\"CardName\", SUM(T1.\"LineTotal\") AS \"Revenue\", SUM(T1.\"GrssProfit\") AS \"GrossProfit\" FROM OINV T0 INNER JOIN INV1 T1 ON T0.\"DocEntry\" = T1.\"DocEntry\" WHERE T0.\"CANCELED\" = 'N' AND T0.\"DocDate\" >= '{date_6m_ago}' GROUP BY T0.\"CardCode\", T0.\"CardName\""
-      }
-    ]
-  },
 
   _charts: {},
   MARGIN_THRESHOLD: 20,

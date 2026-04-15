@@ -4,6 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Inventory Levels · B1 Report</title>
+<script type="application/json" id="b1report-meta">
+{
+  "id": "inventory-levels",
+  "name": "Inventory levels",
+  "description": "Inventory status by item using QuantityOnStock and warehouse InStock, with reorder alerts based on MinInventory or warehouse MinimalStock.",
+  "tags": [
+    "inventory",
+    "stock",
+    "warehouse",
+    "items",
+    "reorder"
+  ],
+  "queries": [
+    {
+      "key": "items",
+      "endpoint": "Items",
+      "select": "ItemCode,ItemName,ItemsGroupCode,MinInventory,MaxInventory,MovingAveragePrice,ItemWarehouseInfoCollection",
+      "filter": "Valid eq 'tYES' and InventoryItem eq 'tYES'",
+      "top": 500
+    }
+  ]
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
@@ -374,22 +397,7 @@ tbody td.muted { color: var(--muted); }
 //  B1Report contract
 // ═══════════════════════════════════════════════════════════════════
 window.B1Report = {
-
-  meta: {
-    id:          "inventory-levels",
-    name:        "Inventory levels",
-    description: "Inventory status by item using QuantityOnStock and warehouse InStock, with reorder alerts based on MinInventory or warehouse MinimalStock.",
-    tags:        ["inventory", "stock", "warehouse", "items", "reorder"],
-     queries: [
-    {
-      key: "items",
-      endpoint: "Items",
-      select: "ItemCode,ItemName,ItemsGroupCode,MinInventory,MaxInventory,MovingAveragePrice,ItemWarehouseInfoCollection",
-      filter: "Valid eq 'tYES' and InventoryItem eq 'tYES'",
-      top: 500
-    }
-  ]
-  },
+
 
   _charts: {},
 

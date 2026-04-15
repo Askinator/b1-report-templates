@@ -4,6 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Open Sales Orders · B1 Report</title>
+<script type="application/json" id="b1report-meta">
+{
+  "id": "open-sales-orders",
+  "name": "Open sales orders",
+  "description": "Delivery backlog showing open sales orders, days late, and fulfillment priority. Use when user asks about open orders, backlog, deliveries, or fulfillment.",
+  "tags": [
+    "orders",
+    "backlog",
+    "delivery",
+    "fulfillment",
+    "sales orders"
+  ],
+  "queries": [
+    {
+      "key": "orders",
+      "endpoint": "Orders",
+      "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus",
+      "filter": "DocumentStatus eq 'bost_Open' and Cancelled eq 'tNO'",
+      "orderby": "DocDueDate asc",
+      "top": 300
+    }
+  ]
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
@@ -189,22 +213,6 @@ tbody td.muted { color: var(--muted); }
 <script>
 window.B1Report = {
 
-  meta: {
-    id:          "open-sales-orders",
-    name:        "Open sales orders",
-    description: "Delivery backlog showing open sales orders, days late, and fulfillment priority. Use when user asks about open orders, backlog, deliveries, or fulfillment.",
-    tags:        ["orders", "backlog", "delivery", "fulfillment", "sales orders"],
-    queries: [
-      {
-        key: "orders",
-        endpoint: "Orders",
-        select: "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus",
-        filter: "DocumentStatus eq 'bost_Open' and Cancelled eq 'tNO'",
-        orderby: "DocDueDate asc",
-        top: 300
-      }
-    ]
-  },
 
   _charts: {},
 

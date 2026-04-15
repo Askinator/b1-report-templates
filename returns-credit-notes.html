@@ -4,6 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Returns &amp; Credit Notes · B1 Report</title>
+<script type="application/json" id="b1report-meta">
+{
+  "id": "returns-credit-notes",
+  "name": "Returns & credit notes",
+  "description": "AR credit notes issued in the last 6 months, grouped by customer and month. Shows return trends and repeat offenders. Use when user asks about returns, credit notes, refunds, or quality issues.",
+  "tags": [
+    "returns",
+    "credit notes",
+    "refunds",
+    "quality"
+  ],
+  "queries": [
+    {
+      "key": "creditNotes",
+      "endpoint": "CreditNotes",
+      "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,DocCurrency",
+      "filter": "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
+      "orderby": "DocDate desc",
+      "top": 300
+    }
+  ]
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
@@ -161,22 +184,6 @@ tbody td.muted { color: var(--muted); }
 <script>
 window.B1Report = {
 
-  meta: {
-    id:          "returns-credit-notes",
-    name:        "Returns & credit notes",
-    description: "AR credit notes issued in the last 6 months, grouped by customer and month. Shows return trends and repeat offenders. Use when user asks about returns, credit notes, refunds, or quality issues.",
-    tags:        ["returns", "credit notes", "refunds", "quality"],
-    queries: [
-      {
-        key: "creditNotes",
-        endpoint: "CreditNotes",
-        select: "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,DocCurrency",
-        filter: "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
-        orderby: "DocDate desc",
-        top: 300
-      }
-    ]
-  },
 
   _charts: {},
 

@@ -4,6 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Slow-Moving Inventory · B1 Report</title>
+<script type="application/json" id="b1report-meta">
+{
+  "id": "slow-moving-inventory",
+  "name": "Slow-moving inventory",
+  "description": "Items with stock on hand but zero or near-zero sales activity in the last 90+ days. Shows tied-up capital and dead stock. Use when user asks about slow movers, dead stock, idle inventory, or stock liquidation.",
+  "tags": [
+    "slow moving",
+    "dead stock",
+    "idle",
+    "inventory",
+    "liquidation",
+    "write-off"
+  ],
+  "queries": [
+    {
+      "key": "slowItems",
+      "sql": "SELECT T0.\"ItemCode\", T0.\"ItemName\", T0.\"OnHand\", T0.\"AvgPrice\", T0.\"LastPurPrc\" AS \"LastPurchasePrice\", (SELECT MAX(T1.\"DocDate\") FROM INV1 T1 INNER JOIN OINV T2 ON T1.\"DocEntry\" = T2.\"DocEntry\" WHERE T1.\"ItemCode\" = T0.\"ItemCode\" AND T2.\"CANCELED\" = 'N') AS \"LastSaleDate\" FROM OITM T0 WHERE T0.\"OnHand\" > 0 AND T0.\"InvntItem\" = 'Y' ORDER BY \"LastSaleDate\" ASC"
+    }
+  ]
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
@@ -176,18 +197,6 @@ tbody td.muted { color: var(--muted); }
 <script>
 window.B1Report = {
 
-  meta: {
-    id:          "slow-moving-inventory",
-    name:        "Slow-moving inventory",
-    description: "Items with stock on hand but zero or near-zero sales activity in the last 90+ days. Shows tied-up capital and dead stock. Use when user asks about slow movers, dead stock, idle inventory, or stock liquidation.",
-    tags:        ["slow moving", "dead stock", "idle", "inventory", "liquidation", "write-off"],
-    queries: [
-      {
-        key: "slowItems",
-        sql: "SELECT T0.\"ItemCode\", T0.\"ItemName\", T0.\"OnHand\", T0.\"AvgPrice\", T0.\"LastPurPrc\" AS \"LastPurchasePrice\", (SELECT MAX(T1.\"DocDate\") FROM INV1 T1 INNER JOIN OINV T2 ON T1.\"DocEntry\" = T2.\"DocEntry\" WHERE T1.\"ItemCode\" = T0.\"ItemCode\" AND T2.\"CANCELED\" = 'N') AS \"LastSaleDate\" FROM OITM T0 WHERE T0.\"OnHand\" > 0 AND T0.\"InvntItem\" = 'Y' ORDER BY \"LastSaleDate\" ASC"
-      }
-    ]
-  },
 
   _charts: {},
 
