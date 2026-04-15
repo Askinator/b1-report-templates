@@ -350,44 +350,22 @@ tbody td.muted { color: var(--muted); }
 // ═══════════════════════════════════════════════════════════════════
 //  B1Report contract
 //
-//  The agent sets window.__B1_AGENT_CONTROLLED__ = true, then calls
-//  load(data) with the query results from the manifest.
+//  The agent sets window.__B1_AGENT_CONTROLLED__ = true, reads
+//  window.B1Report.meta.queries from this HTML file, runs them,
+//  then calls load(data) with the query results.
 //
 //  load() must be idempotent — the agent may call it more than once
 //  (e.g. on refresh). Destroy and recreate Chart.js instances rather
 //  than appending to the DOM.
 //
-//  Register this template in manifest.json:
+//  Register this template in manifest.json as catalog metadata only:
 //
 //    {
 //      "id": "my-report-id",
 //      "type": "standalone",
 //      "name": "My report name",
 //      "description": "...",
-//      "tags": ["tag1", "tag2"],
-//      "queries": [
-//        {
-//          "key": "rows",
-//          "endpoint": "Invoices",
-//          "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal",
-//          "filter": "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
-//          "orderby": "DocDate desc",
-//          "top": 200
-//        },
-//        {
-//          "key": "summary",
-//          "sql": "SELECT T0.\"CardCode\", SUM(T0.\"DocTotal\") AS \"Total\" FROM OINV T0 GROUP BY T0.\"CardCode\""
-//          // SQL restrictions: no arithmetic inside or between aggregates in SELECT
-//          // (e.g. SUM(a * b) and SUM(a) - SUM(b) are both rejected).
-//          // No ORDER BY after GROUP BY. Derive calculated columns in load() instead.
-//        }
-//      ],
-//      "aiHints": {
-//        "kpis": ["total revenue", "invoice count"],
-//        "charts": ["monthly revenue bar", "status donut"],
-//        "tables": ["all invoices sorted by date"],
-//        "deeplinks": ["invoice by DocEntry", "customer by CardCode"]
-//      }
+//      "tags": ["tag1", "tag2"]
 //    }
 // ═══════════════════════════════════════════════════════════════════
 window.B1Report = {
@@ -397,7 +375,20 @@ window.B1Report = {
     name:        "My report name",        // ← display name
     description: "What this report shows and when to use it — the AI reads this for intent matching",
     tags:        ["tag1", "tag2"],        // ← keywords for intent matching
-    queries:     ["rows", "summary"]      // ← must match query keys in manifest.json
+    queries: [
+      {
+        key: "rows",
+        endpoint: "Invoices",
+        select: "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,DocCurrency",
+        filter: "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
+        orderby: "DocDate desc",
+        top: 200
+      },
+      {
+        key: "summary",
+        sql: "SELECT T0.\"CardCode\", SUM(T0.\"DocTotal\") AS \"Total\" FROM OINV T0 WHERE T0.\"CANCELED\" = 'N' GROUP BY T0.\"CardCode\""
+      }
+    ]
   },
 
   // Chart references — stored so they can be destroyed on reload

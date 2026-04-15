@@ -380,7 +380,15 @@ window.B1Report = {
     name:        "Inventory levels",
     description: "Inventory status by item using QuantityOnStock and warehouse InStock, with reorder alerts based on MinInventory or warehouse MinimalStock.",
     tags:        ["inventory", "stock", "warehouse", "items", "reorder"],
-    queries:     ["items"]
+     queries: [
+    {
+      key: "items",
+      endpoint: "Items",
+      select: "ItemCode,ItemName,ItemsGroupCode,MinInventory,MaxInventory,MovingAveragePrice,ItemWarehouseInfoCollection",
+      filter: "Valid eq 'tYES' and InventoryItem eq 'tYES'",
+      top: 500
+    }
+  ]
   },
 
   _charts: {},

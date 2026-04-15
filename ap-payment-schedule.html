@@ -175,7 +175,16 @@ window.B1Report = {
     name:        "AP payment schedule",
     description: "Vendor invoices coming due in the next 7, 14, and 30 days, plus overdue items. Use when user asks about accounts payable, payments due, vendor invoices, or cash outflow.",
     tags:        ["ap", "payable", "payments", "vendors", "cash outflow", "due"],
-    queries:     ["apInvoices"]
+    queries: [
+      {
+        key: "apInvoices",
+        endpoint: "PurchaseInvoices",
+        select: "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,PaidToDate,DocCurrency,DocumentStatus",
+        filter: "DocumentStatus eq 'bost_Open' and Cancelled eq 'tNO'",
+        orderby: "DocDueDate asc",
+        top: 500
+      }
+    ]
   },
 
   _charts: {},

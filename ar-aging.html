@@ -380,7 +380,16 @@ window.B1Report = {
     name:        "AR aging",
     description: "Accounts receivable split into aging buckets: current, 1-30, 31-60, 61-90, 90+ days overdue. Use when user asks about aging, collections, overdue, or cash flow.",
     tags:        ["ar", "aging", "receivables", "overdue", "collections", "cash flow"],
-    queries:     ["openInvoices"]
+    queries: [
+      {
+        key: "openInvoices",
+        endpoint: "Invoices",
+        select: "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,PaidToDate,DocCurrency",
+        filter: "DocumentStatus eq 'bost_Open' and Cancelled eq 'tNO'",
+        orderby: "DocDueDate asc",
+        top: 500
+      }
+    ]
   },
 
   _charts: {},

@@ -181,7 +181,12 @@ window.B1Report = {
     name:        "Slow-moving inventory",
     description: "Items with stock on hand but zero or near-zero sales activity in the last 90+ days. Shows tied-up capital and dead stock. Use when user asks about slow movers, dead stock, idle inventory, or stock liquidation.",
     tags:        ["slow moving", "dead stock", "idle", "inventory", "liquidation", "write-off"],
-    queries:     ["slowItems"]
+    queries: [
+      {
+        key: "slowItems",
+        sql: "SELECT T0.\"ItemCode\", T0.\"ItemName\", T0.\"OnHand\", T0.\"AvgPrice\", T0.\"LastPurPrc\" AS \"LastPurchasePrice\", (SELECT MAX(T1.\"DocDate\") FROM INV1 T1 INNER JOIN OINV T2 ON T1.\"DocEntry\" = T2.\"DocEntry\" WHERE T1.\"ItemCode\" = T0.\"ItemCode\" AND T2.\"CANCELED\" = 'N') AS \"LastSaleDate\" FROM OITM T0 WHERE T0.\"OnHand\" > 0 AND T0.\"InvntItem\" = 'Y' ORDER BY \"LastSaleDate\" ASC"
+      }
+    ]
   },
 
   _charts: {},

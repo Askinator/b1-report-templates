@@ -166,7 +166,16 @@ window.B1Report = {
     name:        "Returns & credit notes",
     description: "AR credit notes issued in the last 6 months, grouped by customer and month. Shows return trends and repeat offenders. Use when user asks about returns, credit notes, refunds, or quality issues.",
     tags:        ["returns", "credit notes", "refunds", "quality"],
-    queries:     ["creditNotes"]
+    queries: [
+      {
+        key: "creditNotes",
+        endpoint: "CreditNotes",
+        select: "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,DocCurrency",
+        filter: "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
+        orderby: "DocDate desc",
+        top: 300
+      }
+    ]
   },
 
   _charts: {},

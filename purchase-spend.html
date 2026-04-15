@@ -357,7 +357,16 @@ window.B1Report = {
     name:        "Purchase & vendor spend",
     description: "PO volume and vendor spend breakdown for the last 6 months. Use when user asks about purchasing, vendors, POs, or procurement.",
     tags:        ["purchasing", "vendors", "po", "spend", "procurement"],
-    queries:     ["purchaseOrders"]
+    queries: [
+      {
+        key: "purchaseOrders",
+        endpoint: "PurchaseOrders",
+        select: "DocEntry,DocNum,CardCode,CardName,DocDate,DocTotal,DocCurrency,DocumentStatus",
+        filter: "DocDate ge '{date_6m_ago}' and Cancelled eq 'tNO'",
+        orderby: "DocDate desc",
+        top: 200
+      }
+    ]
   },
 
   _charts: {},

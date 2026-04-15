@@ -185,7 +185,16 @@ window.B1Report = {
     name:        "Credit limit exposure",
     description: "Customers approaching or exceeding their credit limit. Shows exposure (AR balance + open orders + open deliveries) vs CreditLimit. Use when user asks about credit limits, exposure, credit risk, or order holds.",
     tags:        ["credit", "limit", "exposure", "risk", "holds"],
-    queries:     ["customers"]
+    queries: [
+      {
+        key: "customers",
+        endpoint: "BusinessPartners",
+        select: "CardCode,CardName,CreditLimit,CurrentAccountBalance,OpenOrdersBalance,OpenDeliveryNotesBalance",
+        filter: "CardType eq 'cCustomer' and CreditLimit gt 0",
+        orderby: "CurrentAccountBalance desc",
+        top: 200
+      }
+    ]
   },
 
   _charts: {},
