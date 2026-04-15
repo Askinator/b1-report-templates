@@ -20,7 +20,7 @@
     {
       "key": "quotations",
       "endpoint": "Quotations",
-      "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus,ValidUntil",
+      "select": "DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus",
       "filter": "DocumentStatus eq 'bost_Open' and Cancelled eq 'tNO'",
       "orderby": "DocDate desc",
       "top": 200
@@ -247,7 +247,7 @@ window.B1Report = {
     const enriched = quotations.map(r => ({
       ...r,
       _age: daysSince(r.DocDate),
-      _daysToExpiry: daysUntil(r.ValidUntil)
+      _daysToExpiry: daysUntil(r.DocDueDate)
     }));
 
     const pipelineValue  = enriched.reduce((s, r) => s + (r.DocTotal || 0), 0);
@@ -348,7 +348,7 @@ window.B1Report = {
         <td><div class="row-primary">${r.CardName || '—'}</div><div class="row-secondary">${r.CardCode || ''}</div></td>
         <td class="mono muted">${r.DocNum || '—'}</td>
         <td class="mono muted">${fmtDate(r.DocDate)}</td>
-        <td class="mono muted">${fmtDate(r.ValidUntil)}</td>
+        <td class="mono muted">${fmtDate(r.DocDueDate)}</td>
         <td class="r mono muted">${r._age}</td>
         <td><span class="pill"><span class="dot ${statusDot}"></span>${statusText}</span></td>
         <td class="r mono">${(r.DocTotal || 0).toLocaleString('da-DK')}</td>
@@ -366,15 +366,15 @@ window.B1Report = {
   if (window.__B1_AGENT_CONTROLLED__) return;
   const MOCK = {
     quotations: [
-      { DocEntry:701, DocNum:9001, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2026-03-25", ValidUntil:"2026-04-25", DocTotal:245000, DocCurrency:"DKK" },
-      { DocEntry:702, DocNum:9002, CardCode:"C0017", CardName:"Danfoss Group",       DocDate:"2026-03-20", ValidUntil:"2026-04-03", DocTotal:178000, DocCurrency:"DKK" },
-      { DocEntry:703, DocNum:9003, CardCode:"C0088", CardName:"Vestas Wind Systems",  DocDate:"2026-03-10", ValidUntil:"2026-04-10", DocTotal:412000, DocCurrency:"DKK" },
-      { DocEntry:704, DocNum:9004, CardCode:"C0055", CardName:"DSV Panalpina A/S",   DocDate:"2026-03-01", ValidUntil:"2026-03-31", DocTotal:89500,  DocCurrency:"DKK" },
-      { DocEntry:705, DocNum:9005, CardCode:"C0031", CardName:"Arla Foods amba",     DocDate:"2026-02-15", ValidUntil:"2026-03-30", DocTotal:67200,  DocCurrency:"DKK" },
-      { DocEntry:706, DocNum:9006, CardCode:"C0099", CardName:"Ørsted A/S",          DocDate:"2026-02-01", ValidUntil:"2026-04-01", DocTotal:534000, DocCurrency:"DKK" },
-      { DocEntry:707, DocNum:9007, CardCode:"C0063", CardName:"Coloplast A/S",       DocDate:"2026-01-20", ValidUntil:"2026-03-20", DocTotal:145600, DocCurrency:"DKK" },
-      { DocEntry:708, DocNum:9008, CardCode:"C0077", CardName:"Carlsberg A/S",       DocDate:"2026-01-10", ValidUntil:"2026-03-10", DocTotal:298000, DocCurrency:"DKK" },
-      { DocEntry:709, DocNum:9009, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2026-03-28", ValidUntil:"2026-04-28", DocTotal:112000, DocCurrency:"DKK" },
+      { DocEntry:701, DocNum:9001, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2026-03-25", DocDueDate:"2026-04-25", DocTotal:245000, DocCurrency:"DKK" },
+      { DocEntry:702, DocNum:9002, CardCode:"C0017", CardName:"Danfoss Group",       DocDate:"2026-03-20", DocDueDate:"2026-04-03", DocTotal:178000, DocCurrency:"DKK" },
+      { DocEntry:703, DocNum:9003, CardCode:"C0088", CardName:"Vestas Wind Systems",  DocDate:"2026-03-10", DocDueDate:"2026-04-10", DocTotal:412000, DocCurrency:"DKK" },
+      { DocEntry:704, DocNum:9004, CardCode:"C0055", CardName:"DSV Panalpina A/S",   DocDate:"2026-03-01", DocDueDate:"2026-03-31", DocTotal:89500,  DocCurrency:"DKK" },
+      { DocEntry:705, DocNum:9005, CardCode:"C0031", CardName:"Arla Foods amba",     DocDate:"2026-02-15", DocDueDate:"2026-03-30", DocTotal:67200,  DocCurrency:"DKK" },
+      { DocEntry:706, DocNum:9006, CardCode:"C0099", CardName:"Ørsted A/S",          DocDate:"2026-02-01", DocDueDate:"2026-04-01", DocTotal:534000, DocCurrency:"DKK" },
+      { DocEntry:707, DocNum:9007, CardCode:"C0063", CardName:"Coloplast A/S",       DocDate:"2026-01-20", DocDueDate:"2026-03-20", DocTotal:145600, DocCurrency:"DKK" },
+      { DocEntry:708, DocNum:9008, CardCode:"C0077", CardName:"Carlsberg A/S",       DocDate:"2026-01-10", DocDueDate:"2026-03-10", DocTotal:298000, DocCurrency:"DKK" },
+      { DocEntry:709, DocNum:9009, CardCode:"C0042", CardName:"Novo Industri A/S",   DocDate:"2026-03-28", DocDueDate:"2026-04-28", DocTotal:112000, DocCurrency:"DKK" },
     ],
     company: "CRONUS_DK (demo)",
     webClientBase: "",

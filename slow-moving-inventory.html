@@ -20,7 +20,7 @@
   "queries": [
     {
       "key": "slowItems",
-      "sql": "SELECT T0.\"ItemCode\", T0.\"ItemName\", T0.\"OnHand\", T0.\"AvgPrice\", T0.\"LastPurPrc\" AS \"LastPurchasePrice\", (SELECT MAX(T1.\"DocDate\") FROM INV1 T1 INNER JOIN OINV T2 ON T1.\"DocEntry\" = T2.\"DocEntry\" WHERE T1.\"ItemCode\" = T0.\"ItemCode\" AND T2.\"CANCELED\" = 'N') AS \"LastSaleDate\" FROM OITM T0 WHERE T0.\"OnHand\" > 0 AND T0.\"InvntItem\" = 'Y' ORDER BY \"LastSaleDate\" ASC"
+      "sql": "SELECT T0.\"ItemCode\", T0.\"ItemName\", T0.\"OnHand\", T0.\"AvgPrice\", T0.\"LastPurPrc\" AS \"LastPurchasePrice\", MAX(T2.\"DocDate\") AS \"LastSaleDate\" FROM OITM T0 LEFT JOIN INV1 T1 ON T1.\"ItemCode\" = T0.\"ItemCode\" LEFT JOIN OINV T2 ON T2.\"DocEntry\" = T1.\"DocEntry\" AND T2.\"CANCELED\" = 'N' WHERE T0.\"OnHand\" > 0 AND T0.\"InvntItem\" = 'Y' GROUP BY T0.\"ItemCode\", T0.\"ItemName\", T0.\"OnHand\", T0.\"AvgPrice\", T0.\"LastPurPrc\""
     }
   ]
 }
