@@ -196,9 +196,37 @@ tbody td.muted { color: var(--muted); }
 
 <script>
 window.B1Report = {
-
-
   _charts: {},
+
+  _parseDate(value) {
+    if (!value) return null;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+    if (typeof value !== 'string') return null;
+
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    const sapMatch = /^\/Date\((\d+)(?:[-+]\d+)?\)\/$/.exec(trimmed);
+    if (sapMatch) {
+      const parsed = new Date(Number(sapMatch[1]));
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    const compactMatch = /^(\d{4})(\d{2})(\d{2})$/.exec(trimmed);
+    if (compactMatch) {
+      const [, y, m, d] = compactMatch;
+      return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+
+    const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+    if (isoMatch) {
+      const [, y, m, d] = isoMatch;
+      return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  },
 
   load(data) {
     const slowItems = data.slowItems || [];
@@ -233,8 +261,9 @@ window.B1Report = {
       const price      = r.AvgPrice || r.LastPurchasePrice || 0;
       const stockValue = onHand * price;
       const lastSaleDate = r.LastSaleDate || null;
-      const daysIdle   = lastSaleDate
-        ? Math.max(0, Math.floor((today - new Date(lastSaleDate)) / 86400000))
+      const parsedLastSaleDate = this._parseDate(lastSaleDate);
+      const daysIdle   = parsedLastSaleDate
+        ? Math.max(0, Math.floor((today - parsedLastSaleDate) / 86400000))
         : 999;
 
       let status;
@@ -331,7 +360,12 @@ window.B1Report = {
 
     sorted.forEach(r => {
       const link = sapLink('item', r.ItemCode);
-      const fmtDate = s => s ? new Date(s).toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Never';
+      const fmtDate = value => {
+        const parsed = this._parseDate(value);
+        return parsed
+          ? parsed.toLocaleDateString('da-DK', { day: '2-digit', month: 'short', year: 'numeric' })
+          : 'Never';
+      };
 
       const tr = document.createElement('tr');
       tr.onclick = () => { if (link) window.open(link, '_blank'); };
